@@ -1,0 +1,599 @@
+/* Chat Agent Container */
+.chat-agent-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background: var(--bg-primary);
+}
+
+.chat-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 500px;
+  transition: margin-right 0.3s ease;
+}
+
+/* Dashboard Layout Animations */
+@keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideInDown {
+    from {
+      transform: translateY(-30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideInUp {
+    from {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 0 10px var(--brand-primary);
+    }
+    50% {
+      box-shadow: 0 0 20px var(--brand-primary), 0 0 30px var(--brand-light);
+    }
+  }
+
+  /* Main App Container */
+  .app-container {
+    display: flex;
+    height: 100vh;
+    background: var(--primary-bg);
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .app-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* background: linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(76, 175, 80, 0.02) 25%,
+      transparent 50%,
+      rgba(76, 175, 80, 0.02) 75%,
+      transparent 100%
+    ); */
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  /* Main Dashboard Area */
+  .main-dashboard {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    background: var(--card-bg);
+    /* Add top padding to account for fixed header */
+    /* padding-top: 80px; */
+  }
+  
+  /* Content Grid - Main Layout Container */
+.content-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 0px 0px; /* chat-section, hover-zone, agent-details */
+    gap: 0;
+    width: 100%;
+    height: calc(100vh - 80px); /* Account for header height */
+    overflow: hidden;
+    margin-left: 15.625%;
+    transition: grid-template-columns 0.3s ease;
+  }
+
+  /* Chat Section - Takes full width by default */
+  .chat-section {
+    background: var(--card-bg);
+    overflow: hidden;
+    position: relative;
+    animation: scaleIn 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    animation-delay: 0.5s;
+    animation-fill-mode: both;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .chat-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 30px var(--shadow-medium),
+      0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .chat-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(
+      90deg,
+      var(--brand-primary) 0%,
+      var(--brand-secondary) 50%,
+      var(--brand-accent) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+  }
+
+  /* Hover Zone - Always visible thin strip */
+  .hover-zone {
+    width: 15px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+    transition: all 0.3s ease;
+  }
+
+  .hover-zone::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 40px;
+    background: var(--brand-primary);
+    border-radius: 1px;
+    opacity: 0.3;
+    transition: all 0.3s ease;
+  }
+
+  .hover-zone::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--brand-primary) 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .hover-zone:hover::before {
+    opacity: 0.8;
+    height: 60px;
+    background: var(--brand-secondary);
+  }
+
+  .hover-zone:hover::after {
+    opacity: 0.1;
+  }
+
+  /* Agent Details Wrapper - Hidden by default */
+  .agent-details-wrapper {
+    width: 0;
+    overflow: hidden;
+    background: var(--card-bg);
+    position: relative;
+    transition: width 0.3s ease;
+    /* animation: slideInRight 0.7s cubic-bezier(0.4, 0, 0.2, 1); */
+    animation-delay: 0.6s;
+    animation-fill-mode: both;
+    height: 100%;
+  }
+
+  /* .agent-details-wrapper:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 30px var(--shadow-medium),
+      0 2px 6px rgba(0, 0, 0, 0.1);
+  } */
+
+  /* Hover States - When hovering over hover-zone or agent-details-wrapper */
+  .content-grid:hover .hover-zone {
+    width: 15px;
+  }
+
+  .content-grid:hover .agent-details-wrapper {
+    width: 300px;
+
+  }
+
+  .content-grid:hover {
+    grid-template-columns: 1fr 15px 300px;
+  }
+
+/* When AgentDetails is open (hovered), shift chat to the left by the panel width */
+.agent-details-open .content-grid { grid-template-columns: 1fr 15px 300px; }
+
+/* Fallback for the simple flex layout used by DashboardLayout.jsx */
+.agent-details-open .chat-agent-container .chat-wrapper { margin-right: 300px; }
+
+  /* Agent Details Container */
+  .container-agent {
+    background: var(--card-bg);
+    overflow: hidden;
+    position: relative;
+    width: 300px;
+    height: 100%;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Show agent details when hovering */
+  .content-grid:hover .container-agent {
+    opacity: 1;
+    transform: translateX(0);
+    animation: slideInRight 0.3s ease-out, fadeIn 0.3s ease-out;
+  }
+
+  /* Keep panel open when hovering over it */
+  .agent-details-wrapper:hover {
+    width: 300px !important;
+  }
+
+  .agent-details-wrapper:hover .container-agent {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+  }
+
+  /* Modern browser support for :has() pseudo-class */
+  @supports selector(:has(*)) {
+    .content-grid:has(.agent-details-wrapper:hover) {
+      grid-template-columns: 1fr 15px 300px;
+    }
+
+    .content-grid:has(.agent-details-wrapper:hover) .container-agent {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+
+  
+  /* Loading States */
+  .loading-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--tertiary-bg) 25%,
+      var(--secondary-bg) 50%,
+      var(--tertiary-bg) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+    border-radius: 8px;
+  }
+  
+  /* Interactive Elements Enhancement */
+  .interactive-element {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .interactive-element::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--brand-primary) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    z-index: -1;
+  }
+  
+  .interactive-element:hover::before {
+    width: 100px;
+    height: 100px;
+    opacity: 0.1;
+  }
+  
+  /* Status Indicators */
+  .status-indicator {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .status-indicator.active {
+    animation: pulse 2s infinite;
+  }
+  
+  .status-indicator.success::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: glow 2s infinite;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .content-grid {
+      margin-left: 60px; /* Account for collapsed sidebar */
+    }
+    
+    .main-dashboard {
+      padding-top: 70px; /* Adjust for smaller header */
+    }
+    
+    .content-grid {
+      height: calc(100vh - 70px);
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .content-grid {
+      grid-template-columns: 1fr 0px 0px;
+      margin-left: 0;
+    }
+    
+    .content-grid:hover {
+      grid-template-columns: 1fr 0px 280px;
+    }
+    
+    .agent-details-wrapper {
+      width: 0;
+    }
+    
+    .content-grid:hover .agent-details-wrapper {
+      width: 280px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .app-container {
+      flex-direction: column;
+    }
+    
+    .main-dashboard {
+      animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      padding-top: 70px;
+    }
+    
+    .content-grid {
+      height: calc(100vh - 70px);
+      margin-left: 0;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    
+    .hover-zone {
+      display: none; /* Hide hover zone on mobile */
+    }
+    
+    .agent-details-wrapper {
+      width: 100% !important;
+      order: 2;
+      height: auto;
+      max-height: 300px;
+    }
+    
+    .content-grid:hover .agent-details-wrapper {
+      width: 100% !important;
+    }
+    
+    .container-agent {
+      width: 100%;
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    .chat-section {
+      order: 1;
+      flex: 1;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .main-dashboard {
+      padding-top: 60px;
+    }
+    
+    .content-grid {
+      padding: 8px;
+      gap: 8px;
+    }
+    
+    .content-grid > *:first-child,
+    .content-grid > *:last-child {
+      border-radius: 8px;
+      box-shadow: 
+        0 2px 12px var(--card-shadow),
+        0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+  }
+  
+  /* Performance Optimizations */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Focus Styles for Accessibility */
+  .content-grid > *:focus-within {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+  }
+  
+  .chat-agent-container:focus-within {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+  }
+  
+  /* High Contrast Support */
+  @media (prefers-contrast: high) {
+    .content-grid > *:first-child,
+    .content-grid > *:last-child {
+      border-width: 2px;
+      border-color: var(--text-primary);
+    }
+  }
+  
+  /* Print Styles */
+  @media print {
+    .app-container {
+      display: block;
+      height: auto;
+    }
+    
+    .main-dashboard {
+      padding-top: 0;
+    }
+    
+    .content-grid {
+      display: block;
+      padding: 0;
+      margin-left: 0;
+    }
+    
+    .chat-agent-container {
+      display: block;
+      height: auto;
+    }
+    
+    .content-grid > *:first-child,
+    .content-grid > *:last-child {
+      box-shadow: none;
+      border: 1px solid var(--border-dark);
+      margin-bottom: 20px;
+      animation: none;
+    }
+  }
+  
+  /* Dark Theme Enhancements */
+  [data-theme="dark"] .content-grid > *:first-child::before {
+    background: linear-gradient(
+      90deg,
+      var(--brand-primary) 0%,
+      var(--brand-secondary) 50%,
+      var(--brand-accent) 100%
+    );
+  }
+  
+  [data-theme="dark"] .interactive-element:hover::before {
+    background: radial-gradient(circle, var(--brand-secondary) 0%, transparent 70%);
+  }
+  
+  [data-theme="dark"] .app-container::before {
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(102, 187, 106, 0.03) 25%,
+      transparent 50%,
+      rgba(102, 187, 106, 0.03) 75%,
+      transparent 100%
+    );
+  }
+  
+  /* Micro-interactions */
+  .content-grid > * {
+    transform-origin: center;
+  }
+  
+  .content-grid > *:active {
+    transform: scale(0.998);
+  }

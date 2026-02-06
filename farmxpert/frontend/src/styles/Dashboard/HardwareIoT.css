@@ -1,0 +1,142 @@
+.hardware-iot-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 18px 22px;
+  background: var(--primary-bg);
+}
+
+.hardware-iot-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hardware-iot-header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.hardware-iot-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hardware-iot-subtitle {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.hardware-iot-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+}
+
+.hardware-iot-connect-btn.idle {
+  background: var(--btn-primary);
+  border-color: var(--btn-primary);
+  color: var(--text-inverse);
+}
+
+.hardware-iot-connect-btn.connecting {
+  background: var(--warning-bg);
+  border-color: var(--warning);
+  color: var(--text-primary);
+}
+
+.hardware-iot-connect-btn.failed {
+  background: var(--btn-secondary);
+  border-color: var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.hardware-iot-connect-btn:disabled {
+  cursor: default;
+}
+
+.hardware-iot-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--text-muted);
+  border-top-color: var(--brand-primary);
+  animation: hardware-iot-spin 1s linear infinite;
+}
+
+@keyframes hardware-iot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hardware-iot-content {
+  margin-top: 18px;
+}
+
+.hardware-iot-provision-card {
+  width: 330px;
+  max-width: 100%;
+  height: 150px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-light);
+  background: var(--secondary-bg);
+  box-shadow: 0 10px 26px var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: box-shadow 180ms ease;
+}
+
+.hardware-iot-plus {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: var(--tertiary-bg);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.hardware-iot-provision-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.hardware-iot-provision-subtitle {
+  margin-top: 3px;
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+@media (max-width: 680px) {
+  .hardware-iot-page {
+    padding: 16px 16px;
+  }
+
+  .hardware-iot-header {
+    align-items: flex-start;
+  }
+
+  .hardware-iot-provision-card {
+    width: 100%;
+  }
+}
