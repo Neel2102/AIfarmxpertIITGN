@@ -288,9 +288,17 @@ const EnhancedChatInterface = ({ className = '' }) => {
     }
   };
 
-  const handleVoiceInput = async (audioBlob) => {
+  const handleVoiceInput = async (voiceInput) => {
     try {
-      await submitVoiceInput(audioBlob, session?.id);
+      if (typeof voiceInput === 'string') {
+        const text = voiceInput.trim();
+        if (text) {
+          await processQuery(text, session?.id);
+        }
+        return;
+      }
+
+      await submitVoiceInput(voiceInput, session?.id);
     } catch (error) {
       console.error('Failed to process voice input:', error);
     }
@@ -522,6 +530,7 @@ const EnhancedChatInterface = ({ className = '' }) => {
           textToSpeak={getCurrentResponse()}
           supportedLanguages={['en', 'hi']}
           defaultLanguage="en"
+          autoRestartRecognition={true}
         />
       </InputSection>
     </ChatContainer>

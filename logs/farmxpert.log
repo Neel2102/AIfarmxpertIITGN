@@ -1,0 +1,52 @@
+2026-02-07 01:18:56,778 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:18:56,782 | INFO     | farmxpert:77 - Determined query type: soil_health_agent
+2026-02-07 01:18:56,784 | INFO     | farmxpert:81 - Agents to call: ['soil_health_agent']
+2026-02-07 01:18:56,788 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:18:56,788 | INFO     | farmxpert:77 - Determined query type: fertilizer_agent
+2026-02-07 01:18:56,789 | INFO     | farmxpert:81 - Agents to call: ['fertilizer_agent']
+2026-02-07 01:18:56,789 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:18:56,790 | INFO     | farmxpert:77 - Determined query type: irrigation_agent
+2026-02-07 01:18:56,790 | INFO     | farmxpert:81 - Agents to call: ['irrigation_agent']
+2026-02-07 01:18:56,791 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:18:56,791 | INFO     | farmxpert:77 - Determined query type: weather_watcher
+2026-02-07 01:18:56,791 | INFO     | farmxpert:81 - Agents to call: ['weather_watcher']
+2026-02-07 01:18:56,792 | INFO     | farmxpert:203 - Weather agent raw result: {'error': 'Location required for weather analysis'}
+2026-02-07 01:18:56,792 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:18:56,801 | INFO     | farmxpert:77 - Determined query type: market_intelligence_agent
+2026-02-07 01:18:56,801 | INFO     | farmxpert:81 - Agents to call: ['market_intelligence_agent']
+2026-02-07 01:18:56,802 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:18:56,804 | INFO     | farmxpert:77 - Determined query type: task_scheduler_agent
+2026-02-07 01:18:56,804 | INFO     | farmxpert:81 - Agents to call: ['task_scheduler_agent']
+2026-02-07 01:22:35,714 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,718 | INFO     | farmxpert:77 - Determined query type: soil_health_agent
+2026-02-07 01:22:35,720 | INFO     | farmxpert:81 - Agents to call: ['soil_health_agent']
+2026-02-07 01:22:35,721 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,721 | INFO     | farmxpert:77 - Determined query type: fertilizer_agent
+2026-02-07 01:22:35,722 | INFO     | farmxpert:81 - Agents to call: ['fertilizer_agent']
+2026-02-07 01:22:35,722 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,724 | INFO     | farmxpert:77 - Determined query type: irrigation_agent
+2026-02-07 01:22:35,724 | INFO     | farmxpert:81 - Agents to call: ['irrigation_agent']
+2026-02-07 01:22:35,724 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,724 | INFO     | farmxpert:77 - Determined query type: weather_watcher
+2026-02-07 01:22:35,724 | INFO     | farmxpert:81 - Agents to call: ['weather_watcher']
+2026-02-07 01:22:35,726 | INFO     | farmxpert:203 - Weather agent raw result: {'error': 'Location required for weather analysis'}
+2026-02-07 01:22:35,726 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,726 | INFO     | farmxpert:77 - Determined query type: growth_stage_monitor
+2026-02-07 01:22:35,726 | INFO     | farmxpert:81 - Agents to call: ['growth_stage_monitor']
+2026-02-07 01:22:35,728 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,733 | INFO     | farmxpert:77 - Determined query type: market_intelligence_agent
+2026-02-07 01:22:35,734 | INFO     | farmxpert:81 - Agents to call: ['market_intelligence_agent']
+2026-02-07 01:22:35,735 | INFO     | farmxpert:67 - Dynamic data enrichment successful
+2026-02-07 01:22:35,736 | INFO     | farmxpert:77 - Determined query type: task_scheduler_agent
+2026-02-07 01:22:35,736 | INFO     | farmxpert:81 - Agents to call: ['task_scheduler_agent']
+2026-02-07 01:55:35,966 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 01:55:44,797 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 01:57:15,247 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 01:59:27,732 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 02:06:23,816 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 02:09:11,754 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 02:09:11,755 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 02:09:11,756 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 02:13:39,121 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 02:13:39,123 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 02:13:39,125 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available

@@ -151,6 +151,7 @@ const VoiceInterface = ({
   textToSpeak = '',
   supportedLanguages = ['en', 'hi'],
   defaultLanguage = 'en',
+  autoRestartRecognition = false,
   className = '' 
 }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -162,6 +163,7 @@ const VoiceInterface = ({
   
   const recognitionRef = useRef(null);
   const speechRef = useRef(null);
+  const transcriptRef = useRef('');
 
   useEffect(() => {
     // Initialize Speech Recognition
@@ -190,8 +192,10 @@ const VoiceInterface = ({
             interimTranscript += transcript;
           }
         }
-        
-        setTranscript(finalTranscript + interimTranscript);
+
+        const combinedTranscript = (finalTranscript + interimTranscript).trimStart();
+        transcriptRef.current = combinedTranscript;
+        setTranscript(combinedTranscript);
       };
       
       recognitionInstance.onerror = (event) => {
@@ -201,8 +205,20 @@ const VoiceInterface = ({
       
       recognitionInstance.onend = () => {
         setIsRecording(false);
-        if (transcript.trim() && onVoiceInput) {
-          onVoiceInput(transcript.trim());
+        const finalText = (transcriptRef.current || '').trim();
+        if (finalText && onVoiceInput) {
+          onVoiceInput(finalText);
+        }
+
+        transcriptRef.current = '';
+        setTranscript('');
+
+        if (autoRestartRecognition) {
+          try {
+            recognitionInstance.start();
+          } catch (error) {
+            // Ignore if start is called while already started.
+          }
         }
       };
       
@@ -215,7 +231,21 @@ const VoiceInterface = ({
       setSpeechSynthesis(window.speechSynthesis);
       speechRef.current = window.speechSynthesis;
     }
-  }, [language, onVoiceInput]);
+
+    return () => {
+      try {
+        recognitionRef.current?.stop();
+      } catch (error) {
+        // no-op
+      }
+
+      try {
+        speechRef.current?.cancel();
+      } catch (error) {
+        // no-op
+      }
+    };
+  }, [language, onVoiceInput, autoRestartRecognition]);
 
   const startRecording = () => {
     if (recognition && !isRecording) {
