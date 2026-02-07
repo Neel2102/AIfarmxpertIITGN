@@ -371,69 +371,100 @@ export default function HandsFreeVoice() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-white relative overflow-hidden">
-      <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-500 ${status === 'speaking' ? 'opacity-100' : 'opacity-20'}`}>
-        <div className="w-64 h-64 bg-emerald-500 rounded-full blur-[100px] animate-pulse"></div>
-      </div>
+    <div className="handsfree-voice-page">
+      <div className="handsfree-voice-center">
+        <div className="handsfree-voice-topbar">
+          <div className="handsfree-voice-pill">
+            <Activity size={16} />
+            <span className="handsfree-voice-pill-text">LIVE MODE</span>
+          </div>
 
-      <div className="relative z-10 p-6 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Activity className={`text-emerald-500 ${status === 'idle' ? '' : 'animate-pulse'}`} />
-          <span className="font-bold text-xl tracking-wider">LIVE MODE</span>
+          <div className="handsfree-voice-pill">
+            <span
+              className={`handsfree-voice-dot ${
+                status === 'listening'
+                  ? 'handsfree-voice-dot-listening'
+                  : status === 'connecting'
+                  ? 'handsfree-voice-dot-thinking'
+                  : status === 'speaking'
+                  ? 'handsfree-voice-dot-speaking'
+                  : status === 'error'
+                  ? 'handsfree-voice-dot-error'
+                  : 'handsfree-voice-dot-idle'
+              }`}
+            />
+            <span className="handsfree-voice-pill-text">
+              {status === 'idle' && 'Idle'}
+              {status === 'connecting' && 'Connecting'}
+              {status === 'listening' && 'Listening'}
+              {status === 'speaking' && 'Speaking'}
+              {status === 'error' && 'Error'}
+            </span>
+            <span className={`handsfree-voice-api ${navigator.onLine ? 'ok' : 'bad'}`}>{navigator.onLine ? 'ON' : 'OFF'}</span>
+          </div>
         </div>
-        {status === 'connecting' && <span className="text-sm text-emerald-400 animate-pulse">Establishing Secure Uplink...</span>}
-        {status === 'error' && <span className="text-sm text-red-400 flex items-center gap-2"><WifiOff size={14}/> {errorMessage}</span>}
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10">
-        <div className={`
-                    w-48 h-48 rounded-full border-4 flex items-center justify-center transition-all duration-300
-                    ${status === 'listening' ? 'border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.5)] scale-110' : 'border-slate-700'}
-                    ${status === 'speaking' ? 'border-emerald-400 shadow-[0_0_80px_rgba(52,211,153,0.8)] scale-100' : ''}
-                `}>
-          {status === 'idle' && <MicOff size={48} className="text-slate-600" />}
-          {(status === 'listening' || status === 'connecting') && <Mic size={48} className="text-emerald-500" />}
-          {status === 'speaking' && <Volume2 size={48} className="text-white animate-bounce" />}
+        <button
+          type="button"
+          onClick={!isConnected ? startSession : undefined}
+          className={`handsfree-voice-livebtn ${isConnected ? 'active' : ''} ${status}`}
+          aria-label="Voice session"
+        >
+          <div className="handsfree-voice-livebtn-inner">
+            {status === 'idle' && <MicOff size={44} className="handsfree-voice-mic-icon" />}
+            {(status === 'listening' || status === 'connecting') && <Mic size={44} className="handsfree-voice-mic-icon" />}
+            {status === 'speaking' && <Volume2 size={44} className="handsfree-voice-mic-icon" />}
+            {status === 'error' && <WifiOff size={44} className="handsfree-voice-mic-icon" />}
+          </div>
+          <div className="handsfree-voice-livebtn-label">
+            {status === 'idle' && 'Tap to start'}
+            {status === 'connecting' && 'Connecting...'}
+            {status === 'listening' && 'Listening'}
+            {status === 'speaking' && 'Speaking'}
+            {status === 'error' && 'Reconnect'}
+          </div>
+        </button>
+
+        <div className="handsfree-voice-title">
+          {status === 'idle' && 'Ready to connect'}
+          {status === 'connecting' && 'Connecting to Farm Swarm...'}
+          {status === 'listening' && 'Listening...'}
+          {status === 'speaking' && 'FarmXpert Speaking...'}
+          {status === 'error' && 'Connection issue'}
         </div>
 
-        <h2 className="mt-8 text-2xl font-light text-slate-300 text-center">
-          {status === 'idle' && "Ready to connect"}
-          {status === 'connecting' && "Connecting to Farm Swarm..."}
-          {status === 'listening' && "Listening..."}
-          {status === 'speaking' && "FarmXpert Speaking..."}
-        </h2>
+        <div className="handsfree-voice-subtitle">
+          {status === 'listening'
+            ? 'Ask about weather, machinery status, or log a task.'
+            : 'Hands-free voice interface for field operations.'}
+        </div>
 
-        <p className="mt-4 text-slate-500 max-w-md text-center">
-          {status === 'listening' ? "Ask about weather, machinery status, or log a task." : "Hands-free voice interface for field operations."}
-        </p>
-      </div>
-
-      <div className="relative z-10 p-8 pb-12 flex justify-center gap-6">
-        {!isConnected ? (
-          <button
-            onClick={startSession}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-12 py-6 text-xl font-bold shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-3"
-          >
-            <Mic size={24} />
-            START VOICE SESSION
-          </button>
-        ) : (
-          <>
-            <button
-              onClick={toggleMute}
-              className={`p-6 rounded-full border-2 transition-colors ${isMuted ? 'bg-red-500/20 border-red-500 text-red-500' : 'bg-slate-800 border-slate-600 text-white'}`}
-            >
-              {isMuted ? <MicOff size={28} /> : <Mic size={28} />}
-            </button>
-
-            <button
-              onClick={cleanup}
-              className="bg-red-600 hover:bg-red-500 text-white rounded-full px-12 py-6 text-xl font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
-            >
-              END SESSION
-            </button>
-          </>
+        {status === 'error' && (
+          <div className="handsfree-voice-error">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <WifiOff size={14} />
+              {errorMessage}
+            </span>
+          </div>
         )}
+
+        <div className="handsfree-voice-controls">
+          {!isConnected ? (
+            <button type="button" onClick={startSession} className="handsfree-voice-control handsfree-voice-btn-start">
+              <span className="handsfree-voice-btn-icon"><Mic size={18} /></span>
+              START VOICE SESSION
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={toggleMute} className="handsfree-voice-mini" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+                {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+              </button>
+              <button type="button" onClick={cleanup} className="handsfree-voice-control danger">
+                END SESSION
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <canvas ref={canvasRef} className="hidden" width="300" height="100"></canvas>
