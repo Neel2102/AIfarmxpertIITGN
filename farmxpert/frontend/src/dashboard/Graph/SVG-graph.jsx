@@ -45,7 +45,8 @@ export default function SVGChart({
   const minValue = yAxisMin !== undefined ? yAxisMin : Math.min(...allValues)
   const valueRange = maxValue - minValue || 1
   const xStep = (width - 2 * padding) / (primaryData.length - 1)
-  const yScale = (height - 2 * padding) / valueRange
+  // eslint-disable-next-line no-unused-vars
+  const _yScale = (height - 2 * padding) / valueRange
 
   const buildPoints = (seriesData, seriesMinValue, seriesMaxValue) =>
     seriesData.map((point, index) => {
@@ -59,13 +60,13 @@ export default function SVGChart({
   const points = buildPoints(primaryData, minValue, maxValue)
   const datasetPoints = isMultiDataset
     ? datasets.map((ds) => ({
-        ...ds,
-        points: buildPoints(
-          ds.data,
-          useIndependentYAxis && ds.yAxisMin !== undefined ? ds.yAxisMin : minValue,
-          useIndependentYAxis && ds.yAxisMax !== undefined ? ds.yAxisMax : maxValue
-        ),
-      }))
+      ...ds,
+      points: buildPoints(
+        ds.data,
+        useIndependentYAxis && ds.yAxisMin !== undefined ? ds.yAxisMin : minValue,
+        useIndependentYAxis && ds.yAxisMax !== undefined ? ds.yAxisMax : maxValue
+      ),
+    }))
     : null
 
   // Generate smooth Bezier curve path
@@ -108,24 +109,24 @@ export default function SVGChart({
   // Animation function
   const animateLine = useCallback(() => {
     if (isAnimating || hasAnimated) return
-    
+
     setIsAnimating(true)
     setAnimationProgress(0)
-    
+
     const duration = 2000 // 2 seconds
     const startTime = Date.now()
-    
+
     const animate = () => {
       const elapsed = Date.now() - startTime
       const progress = Math.min(elapsed / duration, 1)
-      
+
       // Easing function for smooth animation
       const easeInOutCubic = (t) => {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
       }
-      
+
       setAnimationProgress(easeInOutCubic(progress))
-      
+
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate)
       } else {
@@ -133,7 +134,7 @@ export default function SVGChart({
         setHasAnimated(true)
       }
     }
-    
+
     animationRef.current = requestAnimationFrame(animate)
   }, [isAnimating, hasAnimated])
 
@@ -183,7 +184,7 @@ export default function SVGChart({
   // Handle mouse move for tooltip
   const handleMouseMove = (event) => {
     if (isAnimating) return // Disable tooltip during animation
-    
+
     const svg = svgRef.current
     if (!svg) return
 
@@ -302,10 +303,10 @@ export default function SVGChart({
               </linearGradient>
             ))}
           <clipPath id="animationClip">
-            <rect 
-              x={0} 
-              y={0} 
-              width={width * animationProgress} 
+            <rect
+              x={0}
+              y={0}
+              width={width * animationProgress}
               height={height}
             />
           </clipPath>
@@ -321,10 +322,10 @@ export default function SVGChart({
             />
 
             {/* Animated smooth curve line */}
-            <path 
-              d={pathData} 
-              fill="none" 
-              stroke={lineColor} 
+            <path
+              d={pathData}
+              fill="none"
+              stroke={lineColor}
               strokeWidth={3}
               clipPath="url(#animationClip)"
             />

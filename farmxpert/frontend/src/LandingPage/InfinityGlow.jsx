@@ -63,6 +63,7 @@ const InfinityGlowBackground = ({ className = "", children }) => {
     const brandLight = getCSSVariable('--brand-light');
 
     // Convert hex colors to rgba format for gradient use
+    // eslint-disable-next-line no-unused-vars
     const primaryRgba = hexToRgba(brandPrimary, 0);
     const r = parseInt(brandPrimary.slice(1, 3), 16);
     const g = parseInt(brandPrimary.slice(3, 5), 16);
@@ -91,7 +92,7 @@ const InfinityGlowBackground = ({ className = "", children }) => {
     // Use fixed dimensions for calculation
     const fixedWidth = params.current.fixedWidth;
     const fixedHeight = params.current.fixedHeight;
-    
+
     const scale = Math.min(fixedWidth, fixedHeight) * 0.29;
     const centerX = fixedWidth / 2;
     const centerY = fixedHeight / 2;
@@ -213,6 +214,7 @@ const InfinityGlowBackground = ({ className = "", children }) => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       window.removeEventListener('resize', handleResize);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Re-render when theme changes
@@ -221,6 +223,7 @@ const InfinityGlowBackground = ({ className = "", children }) => {
       const colors = getThemeColors();
       canvasRef.current.style.backgroundColor = colors.background;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDarkTheme]);
 
   const colors = getThemeColors();

@@ -15,42 +15,40 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [tokenValid, setTokenValid] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState('');
-  
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
 
   useEffect(() => {
-    if (!token) {
-      setError('Invalid reset link. Please request a new password reset.');
-      return;
-    }
-
-    // Verify token on component mount
-    verifyToken();
-  }, [token]);
-
-  const verifyToken = async () => {
-    try {
-      const response = await fetch('/api/auth/verify-reset-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (response.ok) {
-        setTokenValid(true);
-      } else {
-        setTokenValid(false);
-        setError('Invalid or expired reset link. Please request a new password reset.');
+    const doVerify = async () => {
+      if (!token) {
+        setError('Invalid reset link. Please request a new password reset.');
+        return;
       }
-    } catch (err) {
-      setTokenValid(false);
-      setError('Failed to verify reset link. Please try again.');
-    }
-  };
+      // Verify token on component mount
+      try {
+        const response = await fetch('/api/auth/verify-reset-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token }),
+        });
+
+        if (response.ok) {
+          setTokenValid(true);
+        } else {
+          setTokenValid(false);
+          setError('Invalid or expired reset link. Please request a new password reset.');
+        }
+      } catch (err) {
+        setTokenValid(false);
+        setError('Failed to verify reset link. Please try again.');
+      }
+    };
+    doVerify();
+  }, [token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -58,9 +56,9 @@ const ResetPassword = () => {
       ...prev,
       [name]: value
     }));
-    
+
     if (error) setError('');
-    
+
     // Check password strength
     if (name === 'newPassword') {
       checkPasswordStrength(value);
@@ -82,12 +80,12 @@ const ResetPassword = () => {
       setError('Passwords do not match');
       return false;
     }
-    
+
     if (formData.newPassword.length < 6) {
       setError('Password must be at least 6 characters long');
       return false;
     }
-    
+
     return true;
   };
 
@@ -137,11 +135,11 @@ const ResetPassword = () => {
         <div className="navbar-wrapper-reset">
           <NavbarLanding />
         </div>
-        
+
         <div className="infinity-glow-background-reset">
-          <InfinityGlowBackground/>
+          <InfinityGlowBackground />
         </div>
-        
+
         <div className="container-reset">
           <div className="card-reset">
             <div className="card-header-reset">
@@ -182,11 +180,11 @@ const ResetPassword = () => {
         <div className="navbar-wrapper-reset">
           <NavbarLanding />
         </div>
-        
+
         <div className="infinity-glow-background-reset">
-          <InfinityGlowBackground/>
+          <InfinityGlowBackground />
         </div>
-        
+
         <div className="container-reset">
           <div className="card-reset">
             <div className="card-header-reset">
@@ -211,11 +209,11 @@ const ResetPassword = () => {
       <div className="navbar-wrapper-reset">
         <NavbarLanding />
       </div>
-      
+
       <div className="infinity-glow-background-reset">
-        <InfinityGlowBackground/>
+        <InfinityGlowBackground />
       </div>
-      
+
       <div className="container-reset">
         <div className="card-reset">
           <div className="card-header-reset">
@@ -259,7 +257,7 @@ const ResetPassword = () => {
                   disabled={loading}
                 />
                 {formData.newPassword && (
-                  <div 
+                  <div
                     className="password-strength"
                     style={{
                       color: passwordStrength === 'strong' ? '#22c55e' : passwordStrength === 'medium' ? '#f59e0b' : '#ef4444'
@@ -284,9 +282,9 @@ const ResetPassword = () => {
                 />
               </div>
 
-              <button 
+              <button
                 type="submit"
-                className="btn-reset btn-primary-reset" 
+                className="btn-reset btn-primary-reset"
                 disabled={loading || !formData.newPassword || !formData.confirmPassword}
               >
                 {loading ? (

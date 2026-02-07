@@ -7,6 +7,7 @@ import InfinityGlowBackground from '../../LandingPage/InfinityGlow';
 import NavbarLanding from '../../LandingPage/NavbarLanding';
 
 // Loading spinner component
+// eslint-disable-next-line no-unused-vars
 const LoadingSpinner = () => (
   <div className="loading-spinner-login">
     <div className="spinner-login"></div>
@@ -21,7 +22,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -43,7 +44,7 @@ const Login = () => {
 
     try {
       const result = await login(formData.username, formData.password);
-      
+
       if (result.success) {
         setSuccess('Login successful! Redirecting...');
         setTimeout(() => {
@@ -64,11 +65,11 @@ const Login = () => {
       <div className="navbar-wrapper-login">
         <NavbarLanding />
       </div>
-      
+
       <div className="infinity-glow-background-login">
-        <InfinityGlowBackground/>
+        <InfinityGlowBackground />
       </div>
-      
+
       <div className="container-login">
         <div className="card-login">
           <div className="card-header-login">
@@ -101,11 +102,11 @@ const Login = () => {
             <form onSubmit={handleSubmit}>
               <div className="form-group-login">
                 <label className="form-label-login">Username or Email</label>
-                <input 
-                  className="form-input-login" 
-                  type="text" 
+                <input
+                  className="form-input-login"
+                  type="text"
                   name="username"
-                  placeholder="Enter your username or email" 
+                  placeholder="Enter your username or email"
                   value={formData.username}
                   onChange={handleChange}
                   disabled={loading}
@@ -118,7 +119,7 @@ const Login = () => {
                 <PasswordInput
                   className="form-input-login"
                   name="password"
-                  placeholder="Enter your password" 
+                  placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
                   disabled={loading}
@@ -131,9 +132,9 @@ const Login = () => {
                 </Link>
               </div>
 
-              <button 
+              <button
                 type="submit"
-                className="btn-login btn-primary-login" 
+                className="btn-login btn-primary-login"
                 disabled={loading || !formData.username || !formData.password}
               >
                 {loading ? (

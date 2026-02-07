@@ -6,7 +6,7 @@ import "../styles/Dashboard/Sidebar.css";
 
 const Sidebar = ({ onLogout }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  useAuth(); // Auth context used for sidebar functionality
 
   const [isOpen, setIsOpen] = useState(true);
   const [theme, setTheme] = useState(() => {
@@ -106,7 +106,8 @@ const Sidebar = ({ onLogout }) => {
     }
   };
 
-  const toggleProfileMenu = () => {
+  // eslint-disable-next-line no-unused-vars
+  const _toggleProfileMenu = () => {
     setShowProfileMenu(!showProfileMenu);
   };
 

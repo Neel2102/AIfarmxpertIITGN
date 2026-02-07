@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X, Sprout, Award, Shield, FileText, Key, Activity } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, Edit, Save, X, Shield, FileText, Key, Activity } from 'lucide-react';
 import '../styles/Dashboard/Profile/profile.css';
 
 const Profile = () => {
@@ -30,6 +30,7 @@ const Profile = () => {
     { id: 'activity', label: 'Activity Log', icon: Activity }
   ];
 
+  // eslint-disable-next-line no-unused-vars
   const handleEdit = () => {
     setEditData(profileData);
     setIsEditing(true);
@@ -134,7 +135,7 @@ const Profile = () => {
             </div>
           </div>
         );
-      
+
       case 'edit':
         return (
           <div className="edit-content">
@@ -206,7 +207,7 @@ const Profile = () => {
             </div>
           </div>
         );
-      
+
       case 'phone':
         return (
           <div className="verification-content">
@@ -221,7 +222,7 @@ const Profile = () => {
             </div>
           </div>
         );
-      
+
       case 'id':
         return (
           <div className="verification-content">
@@ -233,7 +234,7 @@ const Profile = () => {
             </div>
           </div>
         );
-      
+
       case 'security':
         return (
           <div className="security-content">
@@ -258,7 +259,7 @@ const Profile = () => {
             </div>
           </div>
         );
-      
+
       case 'activity':
         return (
           <div className="activity-content">
@@ -282,7 +283,7 @@ const Profile = () => {
             </div>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -307,7 +308,7 @@ const Profile = () => {
               );
             })}
           </div>
-          
+
           <div className="tab-content">
             {renderTabContent()}
           </div>

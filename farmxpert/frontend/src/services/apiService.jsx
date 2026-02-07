@@ -133,12 +133,7 @@ export const agentAPI = {
 
   // Get agent categories
   getAgentCategories: async () => {
-    try {
-      return { categories: [] };
-    } catch (error) {
-      console.error('Error fetching agent categories:', error);
-      throw error;
-    }
+    return { categories: [] };
   },
 
   // Get agent details
@@ -217,26 +212,22 @@ export const systemAPI = {
 // Weather API (placeholder - would integrate with real weather service)
 export const weatherAPI = {
   // Get weather data for location
+  // eslint-disable-next-line no-unused-vars
   getWeatherData: async (location) => {
-    try {
-      // This would integrate with a real weather API
-      // For now, return mock data that matches the expected format
-      return {
-        temperature: 27,
-        condition: 'Partly Cloudy',
-        humidity: 85,
-        wind_speed: 15,
-        precipitation: 0,
-        forecast: [
-          { date: 'Today', temp: 27, condition: 'Partly Cloudy', precipitation: 0 },
-          { date: 'Tomorrow', temp: 25, condition: 'Rain', precipitation: 15 },
-          { date: 'Day After', temp: 23, condition: 'Heavy Rain', precipitation: 25 }
-        ]
-      };
-    } catch (error) {
-      console.error('Error fetching weather data:', error);
-      throw error;
-    }
+    // This would integrate with a real weather API
+    // For now, return mock data that matches the expected format
+    return {
+      temperature: 27,
+      condition: 'Partly Cloudy',
+      humidity: 85,
+      wind_speed: 15,
+      precipitation: 0,
+      forecast: [
+        { date: 'Today', temp: 27, condition: 'Partly Cloudy', precipitation: 0 },
+        { date: 'Tomorrow', temp: 25, condition: 'Rain', precipitation: 15 },
+        { date: 'Day After', temp: 23, condition: 'Heavy Rain', precipitation: 25 }
+      ]
+    };
   },
 };
 
@@ -299,10 +290,12 @@ export const dataService = {
   },
 };
 
-export default {
+const apiServices = {
   farmAPI,
   agentAPI,
   systemAPI,
   weatherAPI,
   dataService
 };
+
+export default apiServices;
