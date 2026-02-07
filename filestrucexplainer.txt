@@ -94,7 +94,7 @@ Dependencies and versioning
 Build and deployment process
 
 - Local run
-  - Backend: python start.py creates .env template if missing, installs Python deps, and runs uvicorn at interfaces.api.main:app (with --reload in dev).
+  - Backend: python start.py creates .env template if missing, installs Python deps, and runs uvicorn at farmxpert.interfaces.api.main:app (with --reload in dev).
   - Frontend: python start-frontend.py runs npm install then npm start with CRA dev server (proxy to http://localhost:8000).
 - Containers: docker-compose.yml present for containerized dev/prod (configure services accordingly).
 - CI/CD: not included; recommended steps are install deps, run tests, build images, and deploy.

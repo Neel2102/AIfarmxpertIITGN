@@ -12,6 +12,9 @@ from farmxpert.app.agents.growth_stage_monitor.router import router as growth_ro
 from farmxpert.app.agents.soil_health.router import router as soil_health_router
 from farmxpert.app.agents.market_intelligence.router import router as market_intelligence_router
 
+from farmxpert.app.agents.profit_agent.router import router as profit_router
+from farmxpert.app.agents.yield_predictor.router import router as yield_router
+
 app = FastAPI(
     title="FarmXpert AI Platform",
     description="AI-powered agricultural monitoring and decision support system",
@@ -66,6 +69,18 @@ app.include_router(
     tags=["Market Intelligence"]
 )
 
+app.include_router(
+    profit_router,
+    prefix="/agents/profit",
+    tags=["Profit Agent"]
+)
+
+app.include_router(
+    yield_router,
+    prefix="/agents/yield",
+    tags=["Yield Predictor"]
+)
+
 @app.get("/")
 async def root():
     """Root endpoint - API information"""
@@ -77,7 +92,9 @@ async def root():
             "weather_watcher": "/agents/weather",
             "growth_stage_monitor": "/agents/growth",
             "soil_health": "/agents/soil_health",
-            "market_intelligence": "/agents/market_intelligence"
+            "market_intelligence": "/agents/market_intelligence",
+            "profit_agent": "/agents/profit",
+            "yield_predictor": "/agents/yield"
         },
         "orchestrator": "/orchestrator",
         "docs": "/docs"
@@ -93,6 +110,8 @@ async def health_check():
             "weather_watcher": "active",
             "growth_stage_monitor": "active",
             "soil_health": "active",
+            "profit_agent": "active",
+            "yield_predictor": "active",
             "orchestrator": "active"
         }
     }

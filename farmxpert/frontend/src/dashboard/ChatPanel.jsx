@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Bot, BarChart3, Droplets, ThermometerSun, FlaskConical, Sprout, Calendar, Zap, Circle, Bug, Cloud, TrendingUp, Clock, Truck, MapPin, DollarSign, Leaf, Package, ShoppingCart, Shield, GraduationCap, Users } from 'lucide-react';
 import '../styles/Dashboard/ChatPanel.css';
+import '../styles/Dashboard/ChatPanel-reasoning.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
@@ -11,8 +12,138 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showReasoningFor, setShowReasoningFor] = useState(new Set()); // Track which messages show reasoning
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const formatScalar = (value) => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  };
+
+  const SmartChatUI = ({ ui }) => {
+    if (!ui || ui.type !== 'smart_chat_ui_v1') return null;
+    const sections = Array.isArray(ui.sections) ? ui.sections : [];
+
+    return (
+      <div className="smart-ui-root">
+        {(ui.header?.title || ui.header?.subtitle) && (
+          <div className="smart-ui-header">
+            {ui.header?.title && <div className="smart-ui-title">{ui.header.title}</div>}
+            {ui.header?.subtitle && <div className="smart-ui-subtitle">{ui.header.subtitle}</div>}
+          </div>
+        )}
+
+        {sections.map((section, sectionIndex) => {
+          if (section?.type !== 'agent_results') return null;
+          const items = Array.isArray(section.items) ? section.items : [];
+          const isCollapsible = Boolean(section.collapsible);
+          const defaultCollapsed = Boolean(section.defaultCollapsed);
+
+          const content = (
+            <div className="agent-results">
+              {items.map((item, itemIndex) => {
+                const agentName = item?.agent?.name || item?.agent?.id || `Agent ${itemIndex + 1}`;
+                const status = item?.agent?.status || 'success';
+                const statusBadge = item?.agent?.statusBadge || (status === 'success' ? 'Success' : status === 'error' ? 'Failed' : status);
+                const widgets = Array.isArray(item.widgets) ? item.widgets : [];
+
+                return (
+                  <details key={`${sectionIndex}-${itemIndex}`} className={`agent-card status-${status}`} open>
+                    <summary className="agent-card-summary">
+                      <div className="agent-card-left">
+                        <span className={`agent-status-dot ${status}`}></span>
+                        <span className="agent-card-name">{agentName}</span>
+                        {item?.summary && <span className="agent-card-mini">{item.summary}</span>}
+                      </div>
+                      <div className={`agent-card-badge ${status}`}>{statusBadge}</div>
+                    </summary>
+
+                    <div className="agent-card-body">
+                      {widgets.map((w, wIndex) => {
+                        if (w?.type === 'metric_grid') {
+                          const metricItems = Array.isArray(w.items) ? w.items : [];
+                          return (
+                            <div key={wIndex} className="metric-grid">
+                              {metricItems.map((m, mIndex) => (
+                                <div key={mIndex} className={`metric-tile ${m?.emphasis ? 'emphasis' : ''}`}>
+                                  <div className="metric-label">{m?.label}</div>
+                                  <div className="metric-value">
+                                    <span className="metric-number">{formatScalar(m?.value)}</span>
+                                    {m?.unit ? <span className="metric-unit">{m.unit}</span> : null}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        if (w?.type === 'table_grouped') {
+                          const groups = Array.isArray(w.groups) ? w.groups : [];
+                          return (
+                            <div key={wIndex} className="grouped-table">
+                              {w?.title && <div className="grouped-table-title">{w.title}</div>}
+                              <div className="grouped-table-body">
+                                {groups.map((g, gIndex) => {
+                                  const rows = Array.isArray(g.rows) ? g.rows : [];
+                                  if (rows.length === 0) return null;
+                                  return (
+                                    <div key={gIndex} className="group-block">
+                                      <div className="group-title">{g?.groupTitle}</div>
+                                      <table className="kv-table">
+                                        <tbody>
+                                          {rows.map((r, rIndex) => (
+                                            <tr key={rIndex}>
+                                              <td className="kv-key">{r?.field}</td>
+                                              <td className="kv-value">{formatScalar(r?.value)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (w?.type === 'alert') {
+                          const variant = w?.variant || 'info';
+                          return (
+                            <div key={wIndex} className={`smart-alert ${variant}`}>
+                              {w?.title && <div className="smart-alert-title">{w.title}</div>}
+                              {w?.message && <div className="smart-alert-message">{w.message}</div>}
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          );
+
+          if (!isCollapsible) return <div key={sectionIndex}>{content}</div>;
+
+          return (
+            <details key={sectionIndex} className="agent-results-shell" open={!defaultCollapsed}>
+              <summary className="agent-results-shell-summary">Agent Results</summary>
+              {content}
+            </details>
+          );
+        })}
+      </div>
+    );
+  };
 
   // Debug logging removed
 
@@ -77,7 +208,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
   const agentOptions = [
     // Super Agent
     { id: 'orchestrator', name: 'Super Agent', icon: Bot, path: '/dashboard/orchestrator' },
-    
+
     // Crop Planning & Growth
     { id: 'crop-selector', name: 'Crop Selector', icon: Sprout, path: '/dashboard/orchestrator/crop-selector' },
     { id: 'seed-selection', name: 'Seed Selection', icon: Circle, path: '/dashboard/orchestrator/seed-selection' },
@@ -87,13 +218,13 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
     { id: 'pest-diagnostic', name: 'Pest & Disease Diagnostic', icon: Bug, path: '/dashboard/orchestrator/pest-diagnostic' },
     { id: 'weather-watcher', name: 'Weather Watcher', icon: Cloud, path: '/dashboard/orchestrator/weather-watcher' },
     { id: 'growth-monitor', name: 'Growth Stage Monitor', icon: TrendingUp, path: '/dashboard/orchestrator/growth-monitor' },
-    
+
     // Farm Operations & Automation
     { id: 'task-scheduler', name: 'Task Scheduler', icon: Clock, path: '/dashboard/orchestrator/task-scheduler' },
     { id: 'machinery-manager', name: 'Machinery & Equipment', icon: Truck, path: '/dashboard/orchestrator/machinery-manager' },
     { id: 'drone-commander', name: 'Drone Command', icon: Zap, path: '/dashboard/orchestrator/drone-commander' },
     { id: 'layout-mapper', name: 'Farm Layout & Mapping', icon: MapPin, path: '/dashboard/orchestrator/layout-mapper' },
-    
+
     // Analytics
     { id: 'yield-predictor', name: 'Yield Predictor', icon: BarChart3, path: '/dashboard/orchestrator/yield-predictor' },
     { id: 'profit-optimizer', name: 'Profit Optimization', icon: DollarSign, path: '/dashboard/orchestrator/profit-optimizer' },
@@ -124,7 +255,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
 
   const cleanText = (text) => {
     if (!text) return '';
-    
+
     // Clean up the text and ensure proper formatting
     return text
       .replace(/^["']|["']$/g, '')     // Remove surrounding quotes only
@@ -138,29 +269,29 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
   const renderMarkdownText = (text) => {
     // Handle all Markdown formatting
     let result = text;
-    
+
     // Handle code blocks first (```)
     result = result.replace(/```([\s\S]*?)```/g, '<pre class="code-block">$1</pre>');
-    
+
     // Handle inline code (`)
     result = result.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-    
+
     // Handle bold text (**text**) - must be done before italic
     result = result.replace(/\*\*([^*]+)\*\*/g, '<strong class="bold-text">$1</strong>');
-    
+
     // Handle italic text (*text*)
     result = result.replace(/\*([^*]+)\*/g, '<em class="italic-text">$1</em>');
-    
+
     // Handle headers (##)
     result = result.replace(/^## (.+)$/gm, '<h3 class="markdown-header">$1</h3>');
-    
+
     // Split by line breaks and render
     const lines = result.split('\n');
     return lines.map((line, lineIndex) => {
       if (line.trim() === '') {
         return <div key={lineIndex} className="text-line empty-line"></div>;
       }
-      
+
       // Check if it's a section header (ends with colon)
       if (line.trim().endsWith(':')) {
         return (
@@ -169,7 +300,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
           </div>
         );
       }
-      
+
       // Check if it's a bullet point (starts with - or *)
       if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
         // Remove the dash/asterisk from the text since CSS will add the bullet
@@ -180,7 +311,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
           </div>
         );
       }
-      
+
       // Check if it's a numbered list item
       if (/^\d+\.\s/.test(line.trim())) {
         return (
@@ -189,7 +320,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
           </div>
         );
       }
-      
+
       // Check if line contains bullet-like content (fallback for poorly formatted text)
       if (line.includes('•') || line.includes('*') || line.includes('-')) {
         // Try to extract bullet content
@@ -202,7 +333,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
           );
         }
       }
-      
+
       // Regular text line
       return (
         <div key={lineIndex} className="text-line regular-text">
@@ -226,21 +357,21 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-    
-    // Create a placeholder for the streaming response
+
+    // Create a placeholder for the response
     const assistantMessageId = Date.now() + 1;
-    const assistantMessage = { 
-      id: assistantMessageId, 
-      type: 'assistant', 
-      content: '', 
+    const assistantMessage = {
+      id: assistantMessageId,
+      type: 'assistant',
+      content: '',
       timestamp: new Date().toISOString(),
       isStreaming: true
     };
     setMessages((prev) => [...prev, assistantMessage]);
-    
+
     try {
       if (agent === 'super-agent') {
-        const response = await fetch(`${API_BASE_URL}/api/super-agent/query/stream`, {
+        const response = await fetch(`${API_BASE_URL}/api/super-agent/query/ui-stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -265,48 +396,90 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
         const decoder = new TextDecoder();
         let buffer = '';
 
+        const applyUpdate = ({ ui, answer, sop, agent_responses, done }) => {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id !== assistantMessageId) return msg;
+              return {
+                ...msg,
+                ui: ui ?? msg.ui,
+                content: typeof answer === 'string' ? answer : msg.content,
+                sop: sop ?? msg.sop,  // Capture SOP from streaming
+                agent_responses: agent_responses ?? msg.agent_responses,  // Capture agent responses
+                isStreaming: done ? false : msg.isStreaming,
+              };
+            })
+          );
+        };
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
-          buffer = lines.pop(); // Keep the last incomplete line in buffer
+          buffer = lines.pop();
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                
-                if (data.type === 'chunk' && data.content) {
-                  // Update the streaming message with proper formatting
-                  setMessages((prev) => 
-                    prev.map(msg => 
-                      msg.id === assistantMessageId 
-                        ? { ...msg, content: msg.content + data.content }
-                        : msg
-                    )
-                  );
-                } else if (data.type === 'complete') {
-                  // Mark streaming as complete
-                  setMessages((prev) => 
-                    prev.map(msg => 
-                      msg.id === assistantMessageId 
-                        ? { ...msg, isStreaming: false }
-                        : msg
-                    )
-                  );
-                } else if (data.type === 'error') {
-                  throw new Error(data.error || 'Unknown streaming error');
-                }
-              } catch (parseError) {
-                console.error('Error parsing SSE data:', parseError);
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (!raw) continue;
+            try {
+              const evt = JSON.parse(raw);
+              if (evt.type === 'ui' && evt.ui) {
+                applyUpdate({
+                  ui: evt.ui,
+                  answer: evt.answer,
+                  sop: evt.sop,  // Capture SOP from event
+                  agent_responses: evt.agent_responses,  // Capture agent responses
+                  done: false
+                });
+              } else if (evt.type === 'complete') {
+                applyUpdate({ done: true });
+              } else if (evt.type === 'error') {
+                throw new Error(evt.error || 'Unknown streaming error');
               }
+            } catch (parseError) {
+              console.error('Error parsing SSE data:', parseError);
             }
           }
         }
       } else {
-        const response = await fetch(`${API_BASE_URL}/api/agents/${agent}`, {
+        // Individual agent chat - use their specific endpoints
+        // Support both underscore and hyphen agent IDs
+        const agentEndpointMap = {
+          // Hyphen versions
+          'crop-selector': '/api/agents/crop-selector/analyze',
+          'seed-selection': '/api/agents/seed-selector/select',
+          'irrigation-planner': '/api/agents/irrigation-planner/plan',
+          'pest-diagnostic': '/api/agents/pest-disease/diagnose',
+          'farmer-coach': '/api/agents/farmer-coach/ask',
+          'compliance-certification': '/api/agents/compliance/certify',
+          'soil-health': '/api/agents/soil-health/analyze',
+          'fertilizer-advisor': '/api/agents/fertilizer/analyze',
+          'weather-watcher': '/api/agents/weather-watcher/analyze',
+          'growth-monitor': '/api/agents/growth-stage-monitor/analyze',
+          'yield-predictor': '/api/agents/yield/predict',
+          'profit-optimizer': '/api/agents/profit/optimize',
+          // Underscore versions (legacy)
+          'crop_selector': '/api/agents/crop-selector/analyze',
+          'seed_selection': '/api/agents/seed-selector/select',
+          'irrigation_planner': '/api/agents/irrigation-planner/plan',
+          'pest_diagnostic': '/api/agents/pest-disease/diagnose',
+          'pest_disease_diagnostic': '/api/agents/pest-disease/diagnose',
+          'farmer_coach': '/api/agents/farmer-coach/ask',
+          'compliance_certification': '/api/agents/compliance/certify',
+          'soil_health': '/api/agents/soil-health/analyze',
+          'fertilizer_advisor': '/api/agents/fertilizer/analyze',
+          'weather_watcher': '/api/agents/weather-watcher/analyze',
+          'growth_monitor': '/api/agents/growth-stage-monitor/analyze',
+          'yield_predictor': '/api/agents/yield/predict',
+          'profit_optimizer': '/api/agents/profit/optimize',
+        };
+
+        const url = agentEndpointMap[agent] || `${API_BASE_URL}/api/agents/${agent.replace(/_/g, '-')}/analyze`;
+
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -317,7 +490,6 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
               farm_location: farmData?.farm?.location || 'ahmedabad, India',
               farm_size: farmData?.farm?.size_acres || '5 acres',
               current_season: 'Rainy',
-              session_id: sessionId
             },
             session_id: sessionId
           })
@@ -328,20 +500,35 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
         }
 
         const data = await response.json();
-        const content = typeof data?.response === 'string' ? data.response : JSON.stringify(data, null, 2);
-        setMessages((prev) => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? { ...msg, content, isStreaming: false }
+        // Extract natural language response - agents return different formats
+        let content = '';
+        if (data?.response && typeof data.response === 'string') {
+          content = data.response;
+        } else if (data?.answer && typeof data.answer === 'string') {
+          content = data.answer;
+        } else if (data?.message && typeof data.message === 'string') {
+          content = data.message;
+        } else if (data?.natural_language) {
+          content = data.natural_language;
+        } else {
+          content = JSON.stringify(data, null, 2);
+        }
+
+        const ui = data?.ui && typeof data.ui === 'object' ? data.ui : null;
+        const sop = data; // Use full data as SOP for reasoning
+        setMessages((prev) =>
+          prev.map(msg =>
+            msg.id === assistantMessageId
+              ? { ...msg, content, ui, sop, isStreaming: false }
               : msg
           )
         );
       }
     } catch (e) {
-      console.error('Streaming error:', e);
-      setMessages((prev) => 
-        prev.map(msg => 
-          msg.id === assistantMessageId 
+      console.error('Error:', e);
+      setMessages((prev) =>
+        prev.map(msg =>
+          msg.id === assistantMessageId
             ? { ...msg, content: 'Error. Please try again.', isStreaming: false }
             : msg
         )
@@ -379,12 +566,55 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
             <div className="message-content">
               {m.type === 'assistant' ? (
                 <div>
+                  {/* Show natural language text as main content */}
                   {renderStructuredText(m.content)}
                   {m.isStreaming && (
                     <div className="typing-indicator">
                       <span></span>
                       <span></span>
                       <span></span>
+                    </div>
+                  )}
+                  {/* Show Reasoning Toggle - includes UI tables and agent data */}
+                  {(m.ui || m.sop || m.agent_responses) && !m.isStreaming && (
+                    <div className="reasoning-section">
+                      <button
+                        className="show-reasoning-btn"
+                        onClick={() => {
+                          setShowReasoningFor(prev => {
+                            const newSet = new Set(prev);
+                            if (newSet.has(m.id)) {
+                              newSet.delete(m.id);
+                            } else {
+                              newSet.add(m.id);
+                            }
+                            return newSet;
+                          });
+                        }}
+                      >
+                        {showReasoningFor.has(m.id) ? '🔽 Hide Reasoning' : '🔍 Show Reasoning'}
+                      </button>
+                      {showReasoningFor.has(m.id) && (
+                        <div className="reasoning-content">
+                          <h4>Agent Reasoning & Data</h4>
+                          {/* Show UI tables */}
+                          {m.ui && <SmartChatUI ui={m.ui} />}
+                          {/* Show agent responses */}
+                          {m.agent_responses && m.agent_responses.length > 0 && (
+                            <div style={{ marginTop: '16px' }}>
+                              <h5 style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px' }}>Agent Responses:</h5>
+                              <pre>{JSON.stringify(m.agent_responses, null, 2)}</pre>
+                            </div>
+                          )}
+                          {/* Show SOP data */}
+                          {m.sop && (
+                            <div style={{ marginTop: '16px' }}>
+                              <h5 style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px' }}>SOP Data:</h5>
+                              <pre>{JSON.stringify(m.sop, null, 2)}</pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -399,7 +629,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
       <div className="chat-input-container">
         <div className="agent-selector-container">
           <div className="agent-dropdown">
-            <button 
+            <button
               className="agent-dropdown-button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
@@ -439,9 +669,9 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
             rows="1"
             disabled={isLoading}
           />
-          <button 
-            className={`send-button ${isLoading ? 'loading' : ''}`} 
-            onClick={sendMessage} 
+          <button
+            className={`send-button ${isLoading ? 'loading' : ''}`}
+            onClick={sendMessage}
             disabled={isLoading || !inputValue.trim()}
             aria-label="Send message"
           >

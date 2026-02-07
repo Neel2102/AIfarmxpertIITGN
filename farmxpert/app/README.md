@@ -57,7 +57,7 @@ REDIS_URL=your_redis_url
 python start_server.py
 
 # Or using uvicorn directly
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn farmxpert.interfaces.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The application will be available at `http://localhost:8000`

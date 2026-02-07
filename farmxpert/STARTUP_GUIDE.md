@@ -57,7 +57,7 @@ npm start
 pip install -r requirements.txt
 
 # Start server manually
-uvicorn interfaces.api.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn farmxpert.interfaces.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend Only
@@ -180,7 +180,7 @@ curl -X POST http://localhost:8000/orchestrate -H "Content-Type: application/jso
 pip install -r requirements.txt
 
 # Run with production server
-uvicorn interfaces.api.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn farmxpert.interfaces.api.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend

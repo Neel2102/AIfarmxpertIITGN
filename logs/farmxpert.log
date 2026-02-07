@@ -50,3 +50,75 @@
 2026-02-07 02:13:39,121 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
 2026-02-07 02:13:39,123 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
 2026-02-07 02:13:39,125 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 04:36:12,077 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 04:36:12,079 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 04:47:34,361 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 04:47:34,362 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 04:51:35,163 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 04:51:35,164 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 04:56:31,622 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 04:56:31,625 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 04:56:31,626 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 04:57:42,595 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 04:57:42,597 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 04:57:59,406 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 04:57:59,408 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:09:16,104 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:09:16,105 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:11:07,947 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:11:07,948 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:11:07,951 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 05:14:19,632 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:14:19,634 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:15:16,022 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:15:16,023 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:15:16,025 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 05:19:24,159 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:19:24,160 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:29:25,245 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:29:25,247 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:34:28,797 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:34:28,799 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:39:31,038 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:39:31,039 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:44:03,220 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:44:03,248 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:44:03,250 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 05:44:40,078 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:44:40,080 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:44:52,481 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:44:52,482 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:52:56,923 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:52:56,923 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:52:56,926 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 05:54:57,479 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:54:57,480 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:56:57,801 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 05:56:57,802 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 05:56:57,807 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:41 - OpenAI not available
+2026-02-07 06:00:01,054 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:00:01,055 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:00:12,276 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:00:12,277 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:01:41,971 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:01:41,973 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:04:03,434 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:04:03,436 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:04:13,099 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:04:13,100 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:05:40,506 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:05:40,508 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:07:43,465 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:07:43,465 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:09:15,691 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:09:15,692 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:12:49,181 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:12:49,183 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:14:19,860 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:14:19,861 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:14:30,481 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:14:30,482 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:17:58,500 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:17:58,502 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai
+2026-02-07 06:19:35,976 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:18 - Unified configuration service not available
+2026-02-07 06:19:35,976 | WARNING  | farmxpert.app.agents.weather_watcher.services.llm_service:30 - Using deprecated google.generativeai package. Consider upgrading to google.genai

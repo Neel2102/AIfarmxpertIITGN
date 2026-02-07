@@ -13,9 +13,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 import os
 from datetime import datetime, timedelta
-import logging
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class AdaptiveThresholdMLModel:
     """

@@ -45,7 +45,7 @@ echo.
 echo Starting backend (port 8000) and frontend (port 3000) in separate windows...
 
 REM Backend window
-start "FarmXpert Backend" cmd /k "cd /d "%ROOT%" && .\.venv\Scripts\python -m uvicorn farmxpert.interfaces.api.main:app --reload --host 0.0.0.0 --port 8000"
+start "FarmXpert Backend" cmd /k "cd /d "%ROOT%" && .\.venv\Scripts\python -m uvicorn farmxpert.interfaces.api.main:app --reload --host 0.0.0.0 --port 8000 --app-dir "%ROOT%""
 
 REM Frontend window
 start "FarmXpert Frontend" cmd /k "cd /d "%ROOT%\farmxpert\frontend" && npm start"
@@ -58,7 +58,7 @@ goto :eof
 
 :start_backend_only
 echo Starting only backend as frontend is missing...
-start "FarmXpert Backend" cmd /k "cd /d "%ROOT%" && .\.venv\Scripts\python -m uvicorn farmxpert.interfaces.api.main:app --reload --host 0.0.0.0 --port 8000"
+start "FarmXpert Backend" cmd /k "cd /d "%ROOT%" && .\.venv\Scripts\python -m uvicorn farmxpert.interfaces.api.main:app --reload --host 0.0.0.0 --port 8000 --app-dir "%ROOT%""
 echo Backend launching at http://localhost:8000
 echo Press any key to exit this launcher...
 pause >nul

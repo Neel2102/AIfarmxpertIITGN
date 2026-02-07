@@ -46,6 +46,92 @@ Always provide practical, time-sensitive recommendations with real-time alerts b
             if not isinstance(location, dict):
                 location = {}
 
+            latitude = location.get("latitude")
+            longitude = location.get("longitude")
+
+            if not latitude or not longitude:
+                def _extract_location_from_query(q: str) -> str:
+                    text = (q or "").strip()
+                    if not text:
+                        return ""
+
+                    lowered = text.lower()
+                    for token in [" for ", " in "]:
+                        if token in lowered:
+                            idx = lowered.rfind(token)
+                            candidate = text[idx + len(token):].strip(" .,:;\n\t")
+                            if candidate:
+                                return candidate
+
+                    # Fallback: if query contains a comma, take the last 1-2 segments
+                    if "," in text:
+                        parts = [p.strip() for p in text.split(",") if p.strip()]
+                        if len(parts) >= 2:
+                            return ", ".join(parts[-2:])
+                        if parts:
+                            return parts[-1]
+
+                    return text
+
+                location_text = (
+                    context.get("location_text")
+                    or context.get("region")
+                    or inputs.get("location_text")
+                    or inputs.get("region")
+                    or inputs.get("location")
+                )
+                if not isinstance(location_text, str) or not location_text.strip():
+                    location_text = inputs.get("query")
+                location_text = _extract_location_from_query(location_text) if isinstance(location_text, str) else ""
+                location_text = (location_text or "").strip()
+
+                if location_text:
+                    forecast = await WeatherTool.get_weather_forecast(location_text, days=7)
+                    if not isinstance(forecast, dict) or forecast.get("error"):
+                        return {
+                            "agent": self.name,
+                            "success": False,
+                            "response": "Weather fetch failed",
+                            "data": {"location": {"text": location_text}, "raw": forecast},
+                            "recommendations": [],
+                            "warnings": [],
+                            "metadata": {"model": "deterministic"},
+                        }
+
+                    daily_raw = forecast.get("daily_forecast")
+                    daily_list = daily_raw if isinstance(daily_raw, list) else []
+                    alerts_raw = (forecast.get("agricultural_impact") or {}).get("alerts")
+                    alerts_dict = alerts_raw if isinstance(alerts_raw, dict) else {}
+                    response_text = "Weather analysis complete"
+                    heat = (alerts_dict.get("heat_stress") or {}).get("active")
+                    dry = (alerts_dict.get("dry_spell") or {}).get("active")
+                    if heat or dry:
+                        parts = []
+                        if heat:
+                            parts.append("Heat stress risk")
+                        if dry:
+                            parts.append("Dry spell risk")
+                        response_text = ", ".join(parts)
+
+                    return {
+                        "agent": self.name,
+                        "success": True,
+                        "response": response_text,
+                        "forecast": {"days": daily_list, "count": len(daily_list)},
+                        "alerts": alerts_dict,
+                        "provider": forecast.get("provider") or "unknown",
+                        "forecast_count": len(daily_list),
+                        "data": {
+                            "location": {"text": location_text},
+                            "forecast": {"days": daily_list, "count": len(daily_list)},
+                            "alerts": alerts_dict,
+                            "raw": forecast,
+                        },
+                        "recommendations": forecast.get("farming_recommendations") or [],
+                        "warnings": [],
+                        "metadata": {"model": "deterministic", "provider": forecast.get("provider") or "unknown"},
+                    }
+
             result = AppWeatherWatcherAgent.analyze_weather(location)
             ok = bool(result.get("success")) if isinstance(result, dict) else False
             data = result.get("data") if isinstance(result, dict) else None

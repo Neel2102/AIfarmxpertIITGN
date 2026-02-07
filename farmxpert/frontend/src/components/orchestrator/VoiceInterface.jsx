@@ -164,6 +164,48 @@ const VoiceInterface = ({
   const recognitionRef = useRef(null);
   const speechRef = useRef(null);
   const transcriptRef = useRef('');
+  const finalTranscriptRef = useRef('');
+  const silenceTimerRef = useRef(null);
+  const lastSpokenTextRef = useRef('');
+
+  const clearSilenceTimer = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (speechRef.current) {
+      try {
+        speechRef.current.cancel();
+      } catch (e) {
+        // no-op
+      }
+    }
+    setIsPlaying(false);
+  };
+
+  const stopRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        // no-op
+      }
+    }
+  };
+
+  const commitTranscript = () => {
+    const finalText = (transcriptRef.current || '').trim();
+    transcriptRef.current = '';
+    finalTranscriptRef.current = '';
+    setTranscript('');
+
+    if (finalText && onVoiceInput) {
+      onVoiceInput(finalText);
+    }
+  };
 
   useEffect(() => {
     // Initialize Speech Recognition
@@ -178,42 +220,58 @@ const VoiceInterface = ({
       recognitionInstance.onstart = () => {
         setIsRecording(true);
         setTranscript('');
+        clearSilenceTimer();
       };
       
       recognitionInstance.onresult = (event) => {
-        let finalTranscript = '';
+        let newFinal = '';
         let interimTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
+          const t = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscript += transcript;
+            newFinal += t;
           } else {
-            interimTranscript += transcript;
+            interimTranscript += t;
           }
         }
 
-        const combinedTranscript = (finalTranscript + interimTranscript).trimStart();
+        if (newFinal.trim()) {
+          finalTranscriptRef.current = (finalTranscriptRef.current + ' ' + newFinal).trim();
+        }
+
+        const combinedTranscript = (finalTranscriptRef.current + ' ' + interimTranscript).trimStart();
         transcriptRef.current = combinedTranscript;
         setTranscript(combinedTranscript);
+
+        if (combinedTranscript) {
+          if (isPlaying) {
+            stopSpeaking();
+          }
+
+          clearSilenceTimer();
+          silenceTimerRef.current = setTimeout(() => {
+            stopRecording();
+          }, 1200);
+        }
       };
       
       recognitionInstance.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        const err = event?.error;
+        if (err !== 'aborted' && err !== 'no-speech') {
+          console.error('Speech recognition error:', err);
+        }
         setIsRecording(false);
+        clearSilenceTimer();
       };
       
       recognitionInstance.onend = () => {
         setIsRecording(false);
-        const finalText = (transcriptRef.current || '').trim();
-        if (finalText && onVoiceInput) {
-          onVoiceInput(finalText);
-        }
-
-        transcriptRef.current = '';
-        setTranscript('');
+        clearSilenceTimer();
+        commitTranscript();
 
         if (autoRestartRecognition) {
+          if (speechRef.current?.speaking) return;
           try {
             recognitionInstance.start();
           } catch (error) {
@@ -244,12 +302,16 @@ const VoiceInterface = ({
       } catch (error) {
         // no-op
       }
+
+      clearSilenceTimer();
     };
   }, [language, onVoiceInput, autoRestartRecognition]);
 
   const startRecording = () => {
-    if (recognition && !isRecording) {
+    if (recognition && !isRecording && !isPlaying) {
       try {
+        transcriptRef.current = '';
+        finalTranscriptRef.current = '';
         recognition.start();
       } catch (error) {
         console.error('Failed to start recording:', error);
@@ -257,19 +319,15 @@ const VoiceInterface = ({
     }
   };
 
-  const stopRecording = () => {
+  const stopRecordingUi = () => {
     if (recognition && isRecording) {
-      try {
-        recognition.stop();
-      } catch (error) {
-        console.error('Failed to stop recording:', error);
-      }
+      stopRecording();
     }
   };
 
   const toggleRecording = () => {
     if (isRecording) {
-      stopRecording();
+      stopRecordingUi();
     } else {
       startRecording();
     }
@@ -278,25 +336,34 @@ const VoiceInterface = ({
   const speakText = (text) => {
     if (speechSynthesis && text) {
       // Stop any current speech
-      speechSynthesis.cancel();
+      stopSpeaking();
       
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
       utterance.rate = 0.9;
       utterance.pitch = 1;
       
-      utterance.onstart = () => setIsPlaying(true);
-      utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => setIsPlaying(false);
+      utterance.onstart = () => {
+        setIsPlaying(true);
+        if (isRecording) {
+          stopRecording();
+        }
+      };
+      utterance.onend = () => {
+        setIsPlaying(false);
+        if (autoRestartRecognition) {
+          try {
+            recognitionRef.current?.start();
+          } catch (e) {
+            // no-op
+          }
+        }
+      };
+      utterance.onerror = () => {
+        setIsPlaying(false);
+      };
       
       speechSynthesis.speak(utterance);
-    }
-  };
-
-  const stopSpeaking = () => {
-    if (speechSynthesis) {
-      speechSynthesis.cancel();
-      setIsPlaying(false);
     }
   };
 
@@ -307,6 +374,18 @@ const VoiceInterface = ({
       speakText(textToSpeak);
     }
   };
+
+  useEffect(() => {
+    const next = (textToSpeak || '').trim();
+    if (!next) return;
+    if (!speechSynthesis) return;
+
+    if (next === lastSpokenTextRef.current) return;
+    lastSpokenTextRef.current = next;
+
+    speakText(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textToSpeak, speechSynthesis, language]);
 
   const handleLanguageChange = (newLanguage) => {
     setLanguage(newLanguage);

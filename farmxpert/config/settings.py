@@ -17,6 +17,12 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINIAPI", "gemini_api_key"),
     )
+
+    openweather_api_key: str | None = Field(default=None, validation_alias=AliasChoices("OPENWEATHER_API_KEY", "openweather_api_key"))
+    weatherapi_key: str | None = Field(default=None, validation_alias=AliasChoices("WEATHERAPI_KEY", "weatherapi_key"))
+    data_gov_api_key: str | None = Field(default=None, validation_alias=AliasChoices("DATA_GOV_API_KEY", "data_gov_api_key"))
+    data_gov_resource_id: str | None = Field(default=None, validation_alias=AliasChoices("DATA_GOV_RESOURCE_ID", "data_gov_resource_id"))
+    serpapi_api_key: str | None = Field(default=None, validation_alias=AliasChoices("SERPAPI_API_KEY", "serpapi_api_key"))
     gemini_model: str = Field(default="gemini-flash-latest")
     gemini_temperature: float = Field(default=0.4)  # Lower for faster, more consistent responses
     gemini_request_timeout: int = Field(default=20)  # Reduced timeout for faster failure detection

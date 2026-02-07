@@ -53,7 +53,8 @@ def install_dependencies():
     """Install required dependencies"""
     print("📦 Installing dependencies...")
     try:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+        requirements_file = Path(__file__).resolve().parent / "requirements.txt"
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(requirements_file)], check=True)
         print("✅ Dependencies installed successfully!")
         return True
     except subprocess.CalledProcessError:
@@ -67,15 +68,27 @@ def start_server():
     print("📚 API docs will be available at: http://localhost:8000/docs")
     print("🛑 Press Ctrl+C to stop the server")
     print("-" * 50)
+
+    # Ensure the repo root is on PYTHONPATH so `import farmxpert` works
+    # regardless of where this script is invoked from.
+    script_dir = Path(__file__).resolve().parent
+    repo_root = script_dir.parent
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(repo_root) + (os.pathsep + existing_pythonpath if existing_pythonpath else "")
+
+    host = env.get("APP_HOST", "0.0.0.0")
+    port = env.get("APP_PORT", "8000")
     
     try:
         subprocess.run([
             sys.executable, "-m", "uvicorn", 
-            "interfaces.api.main:app", 
+            "farmxpert.interfaces.api.main:app", 
             "--reload", 
-            "--host", "0.0.0.0", 
-            "--port", "8000"
-        ], check=True)
+            "--host", host,
+            "--port", str(port),
+            "--app-dir", str(repo_root),
+        ], check=True, env=env)
     except KeyboardInterrupt:
         print("\n👋 FarmXpert server stopped!")
     except subprocess.CalledProcessError:
@@ -86,9 +99,12 @@ def main():
     print("🌾 Welcome to FarmXpert!")
     print("=" * 50)
     
-    # Check if we're in the right directory
-    if not Path("interfaces/api/main.py").exists():
-        print("❌ Please run this script from the farmxpert directory")
+    # Check if the project structure is present (works from repo root or farmxpert dir)
+    script_dir = Path(__file__).resolve().parent
+    repo_root = script_dir.parent
+    expected_api_main = script_dir / "interfaces" / "api" / "main.py"
+    if not expected_api_main.exists():
+        print("❌ Could not locate interfaces/api/main.py next to start.py")
         sys.exit(1)
     
     # Check environment

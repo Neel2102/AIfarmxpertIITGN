@@ -15,6 +15,7 @@ from farmxpert.core.base_agent.agent_registry import AgentRegistry
 from farmxpert.config.settings import settings
 from farmxpert.services.gemini_service import gemini_service
 from farmxpert.services.tools import SoilTool, WeatherTool, MarketTool, CropTool, FertilizerTool, PestDiseaseTool, IrrigationTool, WebScrapingTool, ClimatePredictionTool, MarketAnalysisTool, GeneticDatabaseTool, SoilSuitabilityTool, YieldPredictionTool, SoilSensorTool, AmendmentRecommendationTool, LabTestAnalyzerTool, FertilizerDatabaseTool, WeatherForecastTool, PlantGrowthSimulationTool, EvapotranspirationModelTool, IoTSoilMoistureTool, WeatherAPITool, ImageRecognitionTool, VoiceToTextTool, DiseasePredictionTool, WeatherMonitoringTool, AlertSystemTool, SatelliteImageProcessingTool, DroneImageProcessingTool, GrowthStagePredictionTool, TaskPrioritizationTool, RealTimeTrackingTool, MaintenanceTrackerTool, PredictiveMaintenanceTool, FieldMappingTool, YieldModelTool, ProfitOptimizationTool, MarketIntelligenceTool, LogisticsTool, ProcurementTool, InsuranceRiskTool, FarmerCoachTool, ComplianceCertificationTool, CommunityEngagementTool, CarbonSustainabilityTool
+from farmxpert.core.super_agent_nl_formatter import format_response_as_natural_language, create_simple_greeting_response, is_simple_query
 
 @dataclass
 class AgentResponse:
@@ -32,6 +33,7 @@ class SuperAgentResponse:
     query: str
     success: bool
     response: Dict[str, Any]
+    natural_language: str = ""  # Clean natural language response for UI
     agent_responses: List[AgentResponse] = field(default_factory=list)
     recommendations: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -180,8 +182,11 @@ class SuperAgent:
         def has_any(keywords: List[str]) -> bool:
             return any(re.search(r"\b" + re.escape(k) + r"\b", q) for k in keywords)
 
+        wants_seeds = has_any([
+            "seed", "seeds", "variety", "varieties", "hybrid", "gmo"
+        ])
         wants_crop_planning = has_any([
-            "crop", "crops", "plant", "sow", "seed", "seeds", "variety", "varieties", "kharif", "rabi", "season"
+            "crop", "crops", "plant", "sow", "kharif", "rabi", "season"
         ])
         wants_weather = has_any([
              "weather", "rain", "rainfall", "temperature", "forecast", "humidity", "wind", "storm", "drought"
@@ -214,6 +219,8 @@ class SuperAgent:
         selected: List[str] = []
         if wants_crop_planning:
             selected.append("crop_selector")
+        if wants_seeds:
+             selected.append("seed_selection")
         if wants_weather:
             selected.append("weather_watcher")
         if wants_growth:
@@ -431,6 +438,21 @@ class SuperAgent:
                 }
             )
             
+            # Handle simple greetings/small talk intelligently
+            greeting_response = create_simple_greeting_response(query)
+            if greeting_response:
+                execution_time = (datetime.now() - start_time).total_seconds()
+                return SuperAgentResponse(
+                    query=query,
+                    success=True,
+                    response={"answer": greeting_response},
+                    natural_language=greeting_response,
+                    agent_responses=[],
+                    execution_time=execution_time,
+                    session_id=session_id
+                )
+            
+            
             # Step 1: Determine which agents to call (hybrid rules + Gemini fallback)
             self.logger.debug("Starting agent selection")
             agent_selection = await self._select_agents(query, context)
@@ -474,10 +496,20 @@ class SuperAgent:
                 }
             )
             
+            # Format as natural language
+            agent_names = [r.agent_name for r in agent_responses if r.success]
+            natural_language = format_response_as_natural_language(
+                query=query,
+                response_data=final_response,
+                agent_names=agent_names,
+                context=context
+            )
+            
             return SuperAgentResponse(
                 query=query,
                 success=True,
                 response=final_response,
+                natural_language=natural_language,
                 agent_responses=agent_responses,
                 execution_time=execution_time,
                 session_id=session_id
@@ -497,10 +529,13 @@ class SuperAgent:
                 exc_info=True
             )
             
+            error_message = f"I apologize, but I encountered an error while processing your query: {str(e)}"
+            
             return SuperAgentResponse(
                 query=query,
                 success=False,
-                response=f"I apologize, but I encountered an error while processing your query: {str(e)}",
+                response={"answer": error_message},
+                natural_language=error_message,
                 execution_time=execution_time,
                 session_id=session_id
             )
@@ -536,13 +571,17 @@ Respond with a JSON array of agent names (use the exact agent keys from the list
 ["agent1", "agent2", "agent3"]
 
 Only include agents that are directly relevant to answering the query. If the query is very specific, you might only need 1-2 agents. If it's complex, you might need 3-5 agents.
+
+IMPORTANT: If a query is about a specific sub-domain like 'seeds', 'irrigation', 'pests', or 'fertilizer', MUST select the corresponding specialized agent (e.g., 'seed_selection', 'irrigation_planner', 'pest_disease_diagnostic') instead of the general 'crop_selector'.
 """
         
         try:
             response = await gemini_service.generate_response(prompt, {"task": "agent_selection"})
             
             # Parse the JSON response
+            self.logger.info(f"Gemini routing response: {response}")
             agent_list = self._parse_agent_selection(response)
+            self.logger.info(f"Parsed agent list: {agent_list}")
             
             # Validate that selected agents exist
             valid_agents = [agent for agent in agent_list if agent in self.available_agents]
@@ -744,6 +783,12 @@ Only include agents that are directly relevant to answering the query. If the qu
             "meta": {"agents_used": "list", "confidence": "0.0-1.0"}
         }
 
+        # Determine language for response
+        locale = context.get('locale', 'en-IN') if context else 'en-IN'
+        language_instruction = ""
+        if locale and locale.lower() not in ('en', 'en-us', 'en-in', 'none'):
+             language_instruction = f"- IMPORTANT: Translate the 'answer', 'recommendations', 'warnings', and 'next_steps' into the language for locale '{locale}'."
+
         prompt = f"""
 You are FarmXpert SuperAgent. Synthesize a minimal, on-point JSON.
 
@@ -759,6 +804,7 @@ Rules:
 - Be concise and specific. No prose outside JSON. No markdown.
 - Limit lists to the specified counts.
 - Use meta.agents_used as the list of agent keys actually used; meta.confidence as a single number (0.0-1.0).
+{language_instruction}
 """
         
         try:

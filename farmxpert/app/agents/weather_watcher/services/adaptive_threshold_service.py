@@ -1,9 +1,7 @@
-import logging
+from loguru import logger
 from typing import Dict, Optional
 from datetime import datetime
 from .adaptive_threshold_ml import AdaptiveThresholdMLModel
-
-logger = logging.getLogger(__name__)
 
 
 class AdaptiveThresholdResult:
@@ -47,7 +45,7 @@ class AdaptiveThresholdService:
                 logger.info("🤖 No pre-trained model found, will use fallback logic")
                 cls.ml_model = None
             else:
-                logger.info("✅ ML model loaded successfully")
+                logger.success("✅ ML model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to initialize ML model: {e}")
             cls.ml_model = None

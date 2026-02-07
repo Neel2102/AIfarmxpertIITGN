@@ -26,6 +26,20 @@ class WeatherSnapshot(BaseModel):
     humidity: int               # %
     wind_speed: float           # km/h
     rainfall_mm: float          # mm
+    rainfall_probability: float # 0.0 - 1.0 (probability of rain)
     weather_condition: str      # rain, clear, clouds, etc.
     source: str                 # OpenWeather / WeatherAPI
     observed_at: datetime
+
+
+class WeatherForecast(BaseModel):
+    date: datetime
+    temperature: float          # °C
+    min_temperature: float      # °C
+    max_temperature: float      # °C
+    humidity: int               # %
+    wind_speed: float           # km/h
+    rainfall_mm: float          # mm
+    rainfall_probability: float # 0.0 - 1.0 (probability of rain)
+    weather_condition: str      # rain, clear, clouds, etc.
+    source: str                 # OpenWeather / WeatherAPI

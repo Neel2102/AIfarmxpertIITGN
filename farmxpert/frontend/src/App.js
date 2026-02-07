@@ -10,6 +10,7 @@ import ResetPassword from './components/auth/ResetPassword';
 import MainDashboard from './dashboard/MainDashboard';
 
 import LoadingSpinner from './components/LoadingSpinner';
+import OfflineIndicator from './components/OfflineIndicator';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -32,7 +33,20 @@ const AuthCard = ({ children }) => (
   </div>
 );
 
+// Private Route Component
+const PrivateRoute = ({ children }) => {
+  const { user, loading } = useAuth();
 
+  if (loading) {
+    return (
+      <AuthContainer>
+        <LoadingSpinner />
+      </AuthContainer>
+    );
+  }
+
+  return user ? children : <Navigate to="/login" replace />;
+};
 
 // Main App Component
 const AppContent = () => {
@@ -67,6 +81,7 @@ const AppContent = () => {
 function App() {
   return (
     <AuthProvider>
+      <OfflineIndicator />
       <AgentProvider>
         <ChatProvider>
           <Routes>
@@ -75,7 +90,11 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/dashboard/*" element={<MainDashboard />} />
+            <Route path="/dashboard/*" element={
+              <PrivateRoute>
+                <MainDashboard />
+              </PrivateRoute>
+            } />
             <Route path="/*" element={<AppContent />} />
           </Routes>
         </ChatProvider>

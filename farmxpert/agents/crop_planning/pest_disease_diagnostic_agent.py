@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 from farmxpert.core.base_agent.enhanced_base_agent import EnhancedBaseAgent
 from farmxpert.services.tools import ImageRecognitionTool, VoiceToTextTool, DiseasePredictionTool, PestDiseaseTool
 from farmxpert.services.gemini_service import gemini_service
+from farmxpert.services.providers.pest_disease_inference import PestDiseaseInferenceProvider
 
 
 class PestDiseaseDiagnosticAgent(EnhancedBaseAgent):
@@ -56,14 +57,34 @@ Always provide accurate diagnoses with practical treatment solutions and prevent
             disease_prediction_data = {}
             risk_analysis_data = {}
             
-            # Get image-based disease/pest identification
-            if "image_recognition" in tools and image_data:
+            # Get image-based disease/pest identification using inference provider
+            if image_data:
                 try:
-                    image_analysis_data = await tools["image_recognition"].identify_plant_disease(
-                        image_data, crop, location
-                    )
+                    provider = PestDiseaseInferenceProvider.get_default()
+                    # Extract image bytes from context (base64 or direct)
+                    image_bytes = image_data.get("bytes") or image_data.get("data")
+                    if isinstance(image_bytes, str):
+                        import base64
+                        image_bytes = base64.b64decode(image_bytes.split(",")[-1])
+                    if image_bytes:
+                        inference_result = await provider.infer_from_bytes(image_bytes, crop=crop, location=location)
+                        if inference_result.success:
+                            image_analysis_data = {
+                                "success": True,
+                                "disease_name": inference_result.diagnosis.get("disease_pest_name") if inference_result.diagnosis else "unknown",
+                                "confidence": inference_result.confidence,
+                                "severity": inference_result.severity,
+                                "symptoms": inference_result.diagnosis.get("symptoms_description") if inference_result.diagnosis else "",
+                                "treatment": inference_result.diagnosis.get("treatment_recommendations") if inference_result.diagnosis else [],
+                                "provider": inference_result.provider,
+                            }
+                        else:
+                            image_analysis_data = {"success": False, "error": inference_result.error, "provider": inference_result.provider}
+                    else:
+                        image_analysis_data = {"success": False, "error": "No image bytes provided"}
                 except Exception as e:
-                    self.logger.warning(f"Failed to analyze image: {e}")
+                    self.logger.warning(f"Failed to run inference: {e}")
+                    image_analysis_data = {"success": False, "error": str(e)}
             
             # Get voice description processing
             if "voice_to_text" in tools and voice_data:

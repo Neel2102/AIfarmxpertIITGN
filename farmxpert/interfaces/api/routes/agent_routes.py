@@ -5,6 +5,118 @@ import time
 from farmxpert.core.base_agent.agent_registry import list_agents, create_agent
 
 
+def _safe_scalar(value: Any) -> bool:
+    return value is None or isinstance(value, (str, int, float, bool))
+
+
+def _find_first_key(data: Any, keys: List[str]) -> Optional[Any]:
+    if not isinstance(data, dict):
+        return None
+    for k in keys:
+        if k in data and _safe_scalar(data[k]):
+            return data[k]
+    for v in data.values():
+        if isinstance(v, dict):
+            found = _find_first_key(v, keys)
+            if found is not None:
+                return found
+    return None
+
+
+def _dict_to_rows(d: Dict[str, Any]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for k, v in d.items():
+        if _safe_scalar(v):
+            rows.append({"field": str(k), "value": v})
+    return rows
+
+
+def _build_agent_ui_item(agent_name: str, success: bool, data: Any, error: Optional[str]) -> Dict[str, Any]:
+    status = "success" if success else "error"
+
+    summary_parts: List[str] = []
+    temperature = _find_first_key(data, ["temperature", "temp", "temperature_c", "temperature_celsius"])
+    humidity = _find_first_key(data, ["humidity", "humidity_percent", "humidity_pct"])
+    condition = _find_first_key(data, ["weather_condition", "condition", "weather", "weather_type"])
+    if temperature is not None:
+        summary_parts.append(f"Temperature: {temperature}")
+    if condition is not None and isinstance(condition, str):
+        summary_parts.append(str(condition))
+
+    summary = ", ".join(summary_parts) if summary_parts else (str(error) if error else "")
+
+    metrics: List[Dict[str, Any]] = []
+    if humidity is not None:
+        metrics.append({"label": "Humidity", "value": humidity, "unit": "%", "emphasis": True})
+    wind_speed = _find_first_key(data, ["wind_speed", "wind", "windSpeed"])
+    if wind_speed is not None:
+        metrics.append({"label": "Wind Speed", "value": wind_speed, "unit": "m/s"})
+    rainfall = _find_first_key(data, ["rainfall_mm", "rainfall", "precipitation_mm", "precipitation"])
+    if rainfall is not None:
+        metrics.append({"label": "Rainfall", "value": rainfall, "unit": "mm"})
+
+    groups: List[Dict[str, Any]] = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, dict):
+                rows = _dict_to_rows(v)
+                if rows:
+                    groups.append({"groupTitle": str(k), "rows": rows})
+
+        root_rows = []
+        for k, v in data.items():
+            if isinstance(v, dict):
+                continue
+            if _safe_scalar(v) and k not in {"recommendations", "warnings"}:
+                root_rows.append({"field": str(k), "value": v})
+        if root_rows:
+            groups.insert(0, {"groupTitle": "data", "rows": root_rows})
+
+    widgets: List[Dict[str, Any]] = []
+    if metrics:
+        widgets.append({"type": "metric_grid", "columns": 2, "items": metrics})
+    if groups:
+        widgets.append({"type": "table_grouped", "title": "Detailed Data", "groups": groups})
+    if not success and error:
+        widgets.append({
+            "type": "alert",
+            "variant": "error",
+            "title": "Agent Failed",
+            "message": str(error)
+        })
+
+    return {
+        "agent": {
+            "id": agent_name,
+            "name": agent_name.replace("_", " ").title(),
+            "status": status,
+            "statusBadge": "Success" if success else "Failed"
+        },
+        "summary": summary,
+        "widgets": widgets
+    }
+
+
+def _build_smart_chat_ui(answer_text: str, agent_name: str, success: bool, data: Any, error: Optional[str]) -> Dict[str, Any]:
+    item = _build_agent_ui_item(agent_name=agent_name, success=success, data=data, error=error)
+    return {
+        "type": "smart_chat_ui_v1",
+        "state": {"phase": "completed", "loading": False},
+        "header": {
+            "title": "Agent Results (1)",
+            "subtitle": answer_text or "Response ready."
+        },
+        "sections": [
+            {
+                "type": "agent_results",
+                "collapsible": True,
+                "defaultCollapsed": False,
+                "items": [item]
+            }
+        ]
+    }
+
+
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
@@ -157,6 +269,29 @@ async def invoke_agent(agent_name: str, inputs: Dict[str, Any]) -> Dict[str, Any
         agent = create_agent(agent_name)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Unknown agent: {agent_name}")
-    return await agent.handle(inputs)
+
+    res = await agent.handle(inputs)
+    if not isinstance(res, dict):
+        return {"success": True, "response": res}
+
+    success = bool(res.get("success", True)) and not bool(res.get("error"))
+    response_text = res.get("response")
+    if response_text is None and res.get("message"):
+        response_text = res.get("message")
+    if response_text is None and res.get("error"):
+        response_text = str(res.get("error"))
+    if response_text is None:
+        response_text = "Response ready." if success else "Sorry, something went wrong."
+
+    data_for_ui = res.get("data") if isinstance(res.get("data"), dict) else res
+    ui = _build_smart_chat_ui(
+        answer_text=str(response_text) if isinstance(response_text, str) else "Response ready.",
+        agent_name=agent_name,
+        success=success,
+        data=data_for_ui,
+        error=str(res.get("error")) if res.get("error") else None,
+    )
+
+    return {**res, "ui": ui, "response": response_text}
 
 

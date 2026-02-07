@@ -7,6 +7,12 @@ import aiohttp
 from datetime import datetime, timedelta
 from farmxpert.config.settings import settings
 from farmxpert.services.gemini_service import gemini_service
+from farmxpert.services.providers import MandiPriceProvider, SchemesProvider, WeatherProvider
+
+
+_weather_provider = WeatherProvider()
+_mandi_price_provider = MandiPriceProvider()
+_schemes_provider = SchemesProvider()
 
 
 class SoilTool:
@@ -75,9 +81,50 @@ class SoilTool:
 class WeatherTool:
     @staticmethod
     async def get_weather_forecast(location: str, days: int = 7) -> Dict[str, Any]:
-        """Get real weather forecast using web search and Gemini analysis"""
+        """Get weather forecast.
+
+        Preferred: OpenWeather via WeatherProvider (cached).
+        Fallback: Gemini-generated forecast.
+        """
+        provider_result: Dict[str, Any] | None = None
         try:
-            # Use Gemini to get weather information based on current data
+            provider_result = await _weather_provider.get_weather_bundle(location, days=days)
+            if provider_result.get("success"):
+                forecast = (provider_result.get("forecast") or {}).get("data") or {}
+                daily = forecast.get("daily")
+                alerts = forecast.get("alerts")
+
+                daily_list = daily if isinstance(daily, list) else []
+                alerts_dict = alerts if isinstance(alerts, dict) else {}
+
+                return {
+                    "location": provider_result.get("location"),
+                    "forecast_days": days,
+                    "daily_forecast": daily_list,
+                    "agricultural_impact": {
+                        "alerts": alerts_dict,
+                    },
+                    "farming_recommendations": [
+                        a.get("advice")
+                        for a in [
+                            (alerts_dict.get("heat_stress") or {}),
+                            (alerts_dict.get("dry_spell") or {}),
+                        ]
+                        if a.get("advice")
+                    ],
+                    "sources": provider_result.get("sources"),
+                    "fetched_at": provider_result.get("fetched_at"),
+                    "provider": "WeatherProvider",
+                    "raw_provider": provider_result,
+                }
+        except Exception as e:
+            # Do not swallow provider errors silently; fall back but keep the error for visibility.
+            provider_result = {
+                "success": False,
+                "error": f"WeatherProvider exception: {e}",
+            }
+
+        try:
             prompt = f"""
             Provide current weather forecast for {location}, India for the next {days} days.
             
@@ -92,11 +139,38 @@ class WeatherTool:
             
             Format as JSON with keys: location, forecast_days, daily_forecast, agricultural_impact, farming_recommendations
             """
-            
             response = await gemini_service.generate_response(prompt, {"task": "weather_forecast"})
-            return gemini_service._parse_json_response(response)
+            parsed = gemini_service._parse_json_response(response) or {}
+            daily = parsed.get("daily_forecast")
+            impact = parsed.get("agricultural_impact")
+            alerts = (impact or {}).get("alerts") if isinstance(impact, dict) else None
+
+            daily_list = daily if isinstance(daily, list) else []
+            alerts_dict = alerts if isinstance(alerts, dict) else {}
+
+            # Normalize shape for UI consumers
+            parsed["location"] = parsed.get("location") or location
+            parsed["forecast_days"] = parsed.get("forecast_days") or days
+            parsed["daily_forecast"] = daily_list
+            parsed["agricultural_impact"] = {"alerts": alerts_dict}
+            parsed["provider"] = parsed.get("provider") or "Gemini"
+            if provider_result and not provider_result.get("success"):
+                parsed["provider_error"] = provider_result.get("error")
+                parsed["raw_provider"] = provider_result
+
+            return parsed
         except Exception as e:
-            return {"error": f"Failed to get weather forecast: {str(e)}"}
+            return {
+                "error": f"Failed to get weather forecast: {str(e)}",
+                "provider": "Gemini",
+                "provider_error": (provider_result or {}).get("error"),
+                "raw_provider": provider_result,
+                "location": location,
+                "forecast_days": days,
+                "daily_forecast": [],
+                "agricultural_impact": {"alerts": {}},
+                "farming_recommendations": [],
+            }
     
     @staticmethod
     async def analyze_weather_impact(crop: str, weather_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1399,7 +1473,46 @@ class WeatherAPITool:
     
     @staticmethod
     async def get_irrigation_weather_forecast(location: str, days: int = 7) -> Dict[str, Any]:
-        """Get weather forecast specifically for irrigation planning"""
+        """Get weather forecast specifically for irrigation planning.
+
+        Preferred: WeatherProvider bundle (cached).
+        Fallback: Gemini-generated forecast.
+        """
+        try:
+            provider_result = await _weather_provider.get_weather_bundle(location, days=days)
+            if provider_result.get("success"):
+                forecast = (provider_result.get("forecast") or {}).get("data") or {}
+                daily = forecast.get("daily") or []
+                return {
+                    "daily_temperature": [
+                        {"date": d.get("date"), "min_c": d.get("temp_min_c"), "max_c": d.get("temp_max_c")}
+                        for d in daily
+                    ],
+                    "rainfall_forecast": [
+                        {"date": d.get("date"), "rain_total_mm": d.get("rain_total_mm"), "pop_max": d.get("pop_max")}
+                        for d in daily
+                    ],
+                    "humidity_levels": [{"date": d.get("date"), "avg_humidity_pct": d.get("avg_humidity_pct")} for d in daily],
+                    "wind_conditions": None,
+                    "solar_radiation": None,
+                    "evapotranspiration": None,
+                    "soil_temperature": None,
+                    "irrigation_windows": [
+                        {
+                            "date": d.get("date"),
+                            "recommendation": "Prefer morning/evening irrigation; avoid irrigation close to predicted rainfall." if (d.get("rain_total_mm") or 0) < 2 else "Rain likely; reduce/skip irrigation if soil moisture is adequate.",
+                        }
+                        for d in daily
+                    ],
+                    "weather_risks": forecast.get("alerts"),
+                    "post_irrigation_weather": None,
+                    "sources": provider_result.get("sources"),
+                    "fetched_at": provider_result.get("fetched_at"),
+                    "provider": "WeatherProvider",
+                }
+        except Exception:
+            pass
+
         prompt = f"""
         Provide detailed weather forecast for {location}, India for the next {days} days, specifically for irrigation planning.
         
@@ -2332,12 +2445,26 @@ class MarketIntelligenceTool:
 
     @staticmethod
     async def fetch_mandi_prices(crops: List[str], location: str) -> Dict[str, Any]:
+        try:
+            provider_result = await _mandi_price_provider.get_mandi_prices(crops, location, limit_per_crop=10)
+            if provider_result.get("success"):
+                return {
+                    "mandi_prices": provider_result.get("mandi_prices"),
+                    "latest_snapshot": provider_result.get("latest_snapshot"),
+                    "data_sources": provider_result.get("data_sources") or [provider_result.get("source")],
+                    "fetched_at": provider_result.get("fetched_at"),
+                    "provider": "MandiPriceProvider",
+                    "errors": provider_result.get("errors"),
+                }
+        except Exception:
+            pass
+
         prompt = f"""
         Fetch recent mandi prices for crops in {location}, India.
 
         Crops: {crops}
 
-        Provide JSON with: mandi_prices (crop -> list of {date, mandi, price}), latest_snapshot (crop -> price), data_sources
+        Provide JSON with: mandi_prices (crop -> list of {{date, mandi, price}}), latest_snapshot (crop -> price), data_sources
         """
         try:
             response = await gemini_service.generate_response(prompt, {"task": "fetch_mandi_prices"})
@@ -2589,6 +2716,39 @@ class FarmerCoachTool:
             return gemini_service._parse_json_response(response)
         except Exception as e:
             return {"error": f"Failed to translate text: {str(e)}"}
+
+    @staticmethod
+    async def fetch_government_schemes(user_query: str, region: str) -> Dict[str, Any]:
+        """Fetch government schemes from authorized sources.
+
+        Preferred: SchemesProvider (SerpAPI + curated fallback) with caching.
+        Fallback: Gemini.
+        """
+        try:
+            provider_result = await _schemes_provider.search_schemes(user_query, region=region, max_results=10)
+            if provider_result.get("success"):
+                return {
+                    "schemes": provider_result.get("schemes"),
+                    "source": provider_result.get("source"),
+                    "fetched_at": provider_result.get("fetched_at"),
+                    "provider": "SchemesProvider",
+                }
+        except Exception:
+            pass
+
+        prompt = f"""
+        Fetch relevant Indian government schemes for farmers.
+
+        Query: {user_query}
+        Region: {region}
+
+        Provide JSON with: schemes (name, benefit, eligibility, link), deadlines
+        """
+        try:
+            response = await gemini_service.generate_response(prompt, {"task": "fetch_government_schemes"})
+            return gemini_service._parse_json_response(response)
+        except Exception as e:
+            return {"error": f"Failed to fetch government schemes: {str(e)}"}
 
 
 class ComplianceCertificationTool:

@@ -1,4 +1,4 @@
-from tool import (
+from farmxpert.agents.analytics.profit_agent.tool import (
     load_expenses,
     calculate_total_expense,
     get_crop_market_prices,

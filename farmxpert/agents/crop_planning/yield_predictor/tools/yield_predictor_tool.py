@@ -1,7 +1,7 @@
 
 from pydantic import BaseModel, Field
 
-from models.yield_model import predict_yield
+from farmxpert.agents.crop_planning.yield_predictor.models.yield_model import predict_yield
 
 
 class YieldPredictionInput(BaseModel):

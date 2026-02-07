@@ -21,12 +21,13 @@ except Exception:
     APP_ORCHESTRATOR_AVAILABLE = False
 
 # Import all agents
-from farmxpert.agents.crop_planning.crop_selector_agent import CropSelectorAgent
-from farmxpert.agents.crop_planning.seed_selection_agent import SeedSelectionAgent
+# Import all agents
+from farmxpert.app.agents.crop_selector.agent import CropSelectorAgent
+from farmxpert.app.agents.seed_selector.agent import SeedSelectionAgent
 from farmxpert.agents.crop_planning.soil_health_agent import SoilHealthAgent
 from farmxpert.agents.crop_planning.fertilizer_advisor_agent import FertilizerAdvisorAgent
-from farmxpert.agents.crop_planning.irrigation_planner_agent import IrrigationPlannerAgent
-from farmxpert.agents.crop_planning.pest_disease_diagnostic_agent import PestDiseaseDiagnosticAgent
+from farmxpert.app.agents.irrigation_planner.agent import IrrigationPlannerAgent
+from farmxpert.app.agents.pest_disease.agent import PestDiseaseDiagnosticAgent
 from farmxpert.agents.crop_planning.weather_watcher_agent import WeatherWatcherAgent
 from farmxpert.agents.crop_planning.growth_stage_monitor_agent import GrowthStageMonitorAgent
 
@@ -47,8 +48,8 @@ from farmxpert.agents.supply_chain.input_procurement_agent import InputProcureme
 from farmxpert.agents.supply_chain.crop_insurance_risk_agent import CropInsuranceRiskAgent
 
 # Import support agents
-from farmxpert.agents.support.farmer_coach_agent import FarmerCoachAgent
-from farmxpert.agents.support.compliance_certification_agent import ComplianceCertificationAgent
+from farmxpert.app.agents.farmer_coach.agent import FarmerCoachAgent
+from farmxpert.app.agents.compliance.agent import ComplianceCertificationAgent
 from farmxpert.agents.support.community_engagement_agent import CommunityEngagementAgent
 
 

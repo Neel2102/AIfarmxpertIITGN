@@ -4,7 +4,10 @@ API endpoints for the central orchestrator.
 """
 
 from fastapi import APIRouter, HTTPException, Body
+from fastapi.responses import StreamingResponse
 from typing import Dict, Any
+import json
+import asyncio
 from farmxpert.app.orchestrator.agent import OrchestratorAgent
 from farmxpert.app.shared.utils import logger
 from farmxpert.app.shared.exceptions import FarmXpertException, OrchestratorException
@@ -123,8 +126,6 @@ async def analyze(request: Dict[str, Any]):
         })
 
 @router.get("/health")
-async def orchestrator_health():
-    """Health check for orchestrator"""
     return {
         "status": "healthy",
         "agent": "orchestrator",
@@ -145,3 +146,47 @@ async def orchestrator_health():
             "comprehensive_farming_advice"
         ]
     }
+
+@router.post("/language/detect")
+async def detect_language(request: Dict[str, str]):
+    """
+    Detect language for voice agent.
+    Simple mock implementation for now.
+    """
+    text = request.get("text", "")
+    # Simple heuristic or default to English
+    return {"language": "English", "locale": "en-IN"}
+
+@router.post("/query/stream")
+async def stream_query(request: Dict[str, Any]):
+    """
+    Stream query response for voice agent.
+    Wraps orchestrator dispatch and streams the LLM summary.
+    """
+    async def event_generator():
+        try:
+            # Process request via orchestrator
+            request.setdefault("strategy", "auto")
+            result = await OrchestratorAgent.handle_request(request)
+            
+            if result.get("error"):
+                yield f"data: {json.dumps({'type': 'error', 'error': str(result)})}\n\n"
+                return
+
+            summary = result.get("llm_summary", "Processing complete.")
+            
+            # Simulated streaming of the summary
+            chunk_size = 20
+            for i in range(0, len(summary), chunk_size):
+                chunk = summary[i:i+chunk_size]
+                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                await asyncio.sleep(0.05) # Simulate typing delay
+
+            # Send final structured data if needed, or just end
+            # yield f"data: {json.dumps({'type': 'result', 'payload': result})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Streaming error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

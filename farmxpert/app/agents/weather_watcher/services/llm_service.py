@@ -1,21 +1,10 @@
 import os
+from loguru import logger
+from typing import Optional
 from pathlib import Path
 from dotenv import load_dotenv
-import logging
-from typing import Dict, Any, Optional
 
-logger = logging.getLogger(__name__)
-
-# Import output models
 from ..models.output_models import WeatherAlertOutput
-
-# Import unified configuration
-try:
-    from ..config_service import agent_config_service
-    CONFIG_AVAILABLE = True
-except ImportError:
-    CONFIG_AVAILABLE = False
-    logger.warning("Unified configuration service not available")
 
 # Google Gen AI (new package)
 try:
@@ -27,10 +16,10 @@ except ImportError:
         # Fallback to deprecated package
         import google.generativeai as genai
         GENAI_AVAILABLE = True
-        logger.warning("Using deprecated google.generativeai package. Consider upgrading to google.genai")
+        logger.warning("⚠️ Using deprecated google.generativeai package. Consider upgrading to google.genai")
     except ImportError:
         GENAI_AVAILABLE = False
-        logger.warning("Google Gen AI not available")
+        logger.warning("⚠️ Google Gen AI not available")
 
 # OpenAI
 try:
@@ -38,7 +27,7 @@ try:
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
-    logger.warning("OpenAI not available")
+    logger.warning("⚠️ OpenAI not available")
 
 # Use app configuration
 from farmxpert.app.config import settings
@@ -63,7 +52,7 @@ if GENAI_AVAILABLE and GOOGLE_API_KEY:
             import google.generativeai as genai_old
             genai_old.configure(api_key=GOOGLE_API_KEY)
     except Exception as e:
-        logger.error(f"Failed to configure Google Gen AI: {e}")
+        logger.error(f"❌ Failed to configure Google Gen AI: {e}")
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_AVAILABLE and OPENAI_API_KEY else None
 
@@ -110,13 +99,13 @@ class LLMService:
         if explanation:
             return explanation
 
-        logger.warning("Gemini failed, switching to ChatGPT")
+        logger.warning("⚠️ Gemini failed, switching to ChatGPT")
         explanation = LLMService._call_chatgpt(prompt)
 
         if explanation:
             return explanation
 
-        logger.error("All LLMs failed, using static fallback")
+        logger.error("❌ All LLMs failed, using static fallback")
         return LLMService._static_fallback(alert)
 
     # ---------- INTERNAL ---------- #
@@ -164,7 +153,7 @@ class LLMService:
                                 _GEMINI_MODEL_NAME = m.name
                                 break
                 except Exception as e:
-                    logger.error(f"Gemini model discovery error: {e}")
+                    logger.error(f"❌ Gemini model discovery error: {e}")
                     # Use default model name
                     _GEMINI_MODEL_NAME = "models/gemini-pro"
 
@@ -194,7 +183,7 @@ class LLMService:
             return None
 
         except Exception as e:
-            logger.error(f"Gemini error: {e}")
+            logger.error(f"❌ Gemini error: {e}")
             return None
 
     # ---------- CHATGPT ---------- #
@@ -216,7 +205,7 @@ class LLMService:
             return response.choices[0].message.content.strip()
 
         except Exception as e:
-            logger.error(f"ChatGPT error: {e}")
+            logger.error(f"❌ ChatGPT error: {e}")
             return None
 
     # ---------- FALLBACK ---------- #
