@@ -41,6 +41,18 @@ export default function Home() {
     );
   };
 
+  // Function to handle smooth scroll to features section
+  const scrollToFeatures = (e) => {
+    e.preventDefault();
+    const featuresSection = document.querySelector('.features-section-landingpage');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   return (
     <div className="landing-page-wrapper-landingpage">
       <NavbarLanding />
@@ -69,9 +81,9 @@ export default function Home() {
               <a href="/register" className="btn-landingpage btn-primary-landingpage">
                 Get Started <ArrowRight className="ml-2" style={{ width: "16px", height: "16px" }} />
               </a>
-              <a href="/about" className="btn-landingpage btn-secondary-1-landingpage">
+              <button onClick={scrollToFeatures} className="btn-landingpage btn-secondary-1-landingpage">
                 Learn More
-              </a>
+              </button>
             </div>
           </div>
         </section>
@@ -118,6 +130,17 @@ export default function Home() {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+        
+        {/* Logo with Text Section */}
+        <section className="logo-section-landingpage">
+          <div className="container">
+            <img
+              className="logo-with-text-img-landingpage"
+              src="/logo-text.png"
+              alt="FarmXpert"
+            />
           </div>
         </section>
 

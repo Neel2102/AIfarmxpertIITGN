@@ -166,7 +166,7 @@ const Sidebar = ({ onLogout }) => {
         >
           <div className="sidebar-header-sidebar">
             <div className="logo-container-sidebar">
-              <div className="logo-icon-sidebar">🌾</div>
+              <img src="/leaf.png" alt="FarmXpert" className="logo-icon-sidebar" />
               <div className="logo-text-sidebar">
                 <h1 className="logo-title-sidebar">FarmXpert</h1>
                 <p className="logo-tagline-sidebar">AI-Powered Farming</p>
@@ -375,140 +375,9 @@ const Sidebar = ({ onLogout }) => {
             </div>
           </div>
 
-          <div className="sidebar-user-profile-sidebar">
-            <div className="user-profile-container-sidebar">
-              <div className="user-profile-sidebar" onClick={toggleProfileMenu}>
-                <div className="user-avatar-sidebar">
-                  <span className="user-initials-sidebar">
-                    {user?.username
-                      ? user.username.charAt(0).toUpperCase()
-                      : "U"}
-                  </span>
-                </div>
-                <div className="user-info-sidebar">
-                  <div className="user-name-sidebar">
-                    {user?.username || "User"}
-                  </div>
-                  <div className="user-role-sidebar">
-                    {user?.role || "Farm User"}
-                  </div>
-                </div>
-                <button className="profile-menu-btn-sidebar">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-              </div>
-              {showProfileMenu && (
-                <div className="profile-dropdown-sidebar">
-                  <div className="profile-dropdown-header-sidebar">
-                    <div className="profile-dropdown-avatar-sidebar">
-                      <span className="user-initials-large-sidebar">
-                        {user?.username
-                          ? user.username.charAt(0).toUpperCase()
-                          : "U"}
-                      </span>
-                    </div>
-                    <div className="profile-dropdown-info-sidebar">
-                      <div className="profile-dropdown-name-sidebar">
-                        {user?.username || "User"}
-                      </div>
-                      <div className="profile-dropdown-email-sidebar">
-                        {user?.email || "user@farmxpert.com"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="profile-dropdown-divider-sidebar"></div>
-                  <div className="profile-dropdown-menu-sidebar">
-                    <button
-                      className="profile-menu-item-sidebar"
-                      onClick={toggleProfileMenu}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Profile Settings
-                    </button>
-                    <button
-                      className="profile-menu-item-sidebar"
-                      onClick={toggleProfileMenu}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                      </svg>
-                      Edit Profile
-                    </button>
-                    <button
-                      className="profile-menu-item-sidebar"
-                      onClick={toggleProfileMenu}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                        <line x1="12" y1="9" x2="12" y2="13" />
-                        <line x1="12" y1="17" x2="12.01" y2="17" />
-                      </svg>
-                      Help & Support
-                    </button>
-                    <div className="profile-dropdown-divider-sidebar"></div>
-                    <button
-                      className="profile-menu-item-sidebar logout-btn-sidebar"
-                      onClick={() => {
-                        onLogout();
-                      }}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16,17 21,12 16,7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           <div className="sidebar-footer-sidebar">
             <div className="footer-text-sidebar">
-              <span>© 2024 FarmXpert</span>
+              <span> 2024 FarmXpert</span>
               <span>v2.1.0</span>
             </div>
           </div>

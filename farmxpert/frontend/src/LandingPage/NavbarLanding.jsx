@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-import { Menu, X, Leaf } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import '../styles/LandingPage/NavbarLanding.css';
 import '../styles/LandingPage/LandingPage.css';
 
@@ -77,7 +77,7 @@ export default function NavbarLanding() {
       <div className="container1">
         <nav className="navbar-navbarlanding">
           <button className="logo-navbarlanding" onClick={() => handleNavClick("/")}>
-            <Leaf className="logo-icon-navbarlanding" />
+            <img src="/leaf.png" alt="Leaf" className="logo-icon-navbarlanding" />
             <span>FarmXpert</span>
           </button>
 

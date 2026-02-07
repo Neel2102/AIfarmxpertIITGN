@@ -91,9 +91,15 @@
 }
 
 .emoji-icon-register {
-  font-size: 48px;
+  font-size: 64px;
   filter: drop-shadow(0 4px 12px var(--shadow-green-light));
   animation: float 3s ease-in-out infinite;
+}
+
+.emoji-icon-register img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 
 @keyframes float {
@@ -429,7 +435,12 @@
   }
 
   .emoji-icon-register {
-    font-size: 42px;
+    font-size: 48px;
+  }
+
+  .emoji-icon-register img {
+    width: 56px;
+    height: 56px;
   }
 
   .form-group-register {

@@ -74,7 +74,7 @@ const Login = () => {
           <div className="card-header-login">
             <div className="icon-wrapper-login">
               <div className="emoji-icon-login">
-                🌾
+                <img src="/leaf.png" alt="Leaf" className="emoji-icon-login" />
               </div>
             </div>
             <h1 className="card-title-login">

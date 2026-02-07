@@ -1,5 +1,4 @@
-
-import React, { useMemo, useState } from "react"
+import React, { useMemo, useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Sprout,
@@ -353,14 +352,30 @@ export default function AgentCatalog() {
     })
   }, [activeCategory, query])
 
+  // Inject heading into header-left
+  useEffect(() => {
+    const headerLeft = document.querySelector('.header-left');
+    if (headerLeft) {
+      headerLeft.innerHTML = `
+        <div class="agent-catalog-header-left">
+          <h1 class="agent-catalog-title">Agent Swarm Catalog</h1>
+          <div class="agent-catalog-subtitle">22 specialized AI agents ready to assist.</div>
+        </div>
+      `;
+    }
+
+    return () => {
+      // Cleanup on unmount
+      const headerLeft = document.querySelector('.header-left');
+      if (headerLeft) {
+        headerLeft.innerHTML = '';
+      }
+    };
+  }, []);
+
   return (
     <div className="agent-catalog-page">
       <div className="agent-catalog-header">
-        <div className="agent-catalog-header-left">
-          <h1 className="agent-catalog-title">Agent Swarm Catalog</h1>
-          <div className="agent-catalog-subtitle">22 specialized AI agents ready to assist.</div>
-        </div>
-
         <div className="agent-catalog-header-right">
           <div className="agent-catalog-search">
             <span className="agent-catalog-search-icon" aria-hidden="true">

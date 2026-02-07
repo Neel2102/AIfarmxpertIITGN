@@ -114,7 +114,9 @@ const Register = () => {
         <div className="card-register">
           <div className="card-header-register">
             <div className="icon-wrapper-register">
-              <div className="emoji-icon-register">🌾</div>
+              <div className="emoji-icon-register">
+                <img src="/leaf.png" alt="Leaf" className="emoji-icon-register" />
+              </div>
             </div>
             <h1 className="card-title-register">
               Create Account

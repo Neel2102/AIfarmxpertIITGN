@@ -81,9 +81,15 @@
 }
 
 .emoji-icon-login {
-  font-size: 56px;
+  font-size: 64px;
   filter: drop-shadow(0 4px 12px var(--shadow-green-light));
   animation: float 3s ease-in-out infinite;
+}
+
+.emoji-icon-login img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 
 @keyframes float {
@@ -417,6 +423,11 @@
 
   .emoji-icon-login {
     font-size: 48px;
+  }
+
+  .emoji-icon-login img {
+    width: 56px;
+    height: 56px;
   }
 }
 

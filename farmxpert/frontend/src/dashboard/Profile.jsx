@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X, Sprout, Award } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Calendar, Edit, Save, X, Sprout, Award, Shield, FileText, Key, Activity } from 'lucide-react';
 import '../styles/Dashboard/Profile/profile.css';
 
 const Profile = () => {
+  const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     name: 'John Farmer',
@@ -11,25 +12,62 @@ const Profile = () => {
     location: 'Ahmedabad, Gujarat',
     joinDate: 'January 15, 2024',
     farmSize: '15 acres',
-    experience: '5 years'
+    experience: '5 years',
+    role: 'User',
+    emailVerification: 'Pending',
+    mobileVerification: 'Active',
+    status: 'Active'
   });
 
   const [editData, setEditData] = useState(profileData);
 
+  const tabs = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'edit', label: 'Edit Profile', icon: Edit },
+    { id: 'phone', label: 'Phone Verification', icon: Phone },
+    { id: 'id', label: 'ID Verification', icon: FileText },
+    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'activity', label: 'Activity Log', icon: Activity }
+  ];
+
   const handleEdit = () => {
     setEditData(profileData);
     setIsEditing(true);
+    setActiveTab('edit');
   };
 
   const handleSave = () => {
     setProfileData(editData);
     setIsEditing(false);
+    setActiveTab('profile');
   };
 
   const handleCancel = () => {
     setEditData(profileData);
     setIsEditing(false);
+    setActiveTab('profile');
   };
+
+  // Inject heading into header-left
+  useEffect(() => {
+    const headerLeft = document.querySelector('.header-left');
+    if (headerLeft) {
+      headerLeft.innerHTML = `
+        <div className="page-header">
+          <h1 className="page-title">Settings</h1>
+          <p className="page-subtitle">Manage your profile information and account settings</p>
+        </div>
+      `;
+    }
+
+    return () => {
+      // Cleanup on unmount
+      const headerLeft = document.querySelector('.header-left');
+      if (headerLeft) {
+        headerLeft.innerHTML = '';
+      }
+    };
+  }, []);
 
   const handleInputChange = (field, value) => {
     setEditData(prev => ({
@@ -38,204 +76,240 @@ const Profile = () => {
     }));
   };
 
+  useEffect(() => {
+    if (!isEditing) {
+      setEditData(profileData);
+    }
+  }, [profileData, isEditing]);
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'profile':
+        return (
+          <div className="profile-content">
+            <div className="profile-left">
+              <div className="profile-avatar">
+                <User size={64} strokeWidth={2} />
+              </div>
+              <div className="profile-basic-info">
+                <h2 className="profile-name">{profileData.name}</h2>
+                <p className="profile-email">{profileData.email}</p>
+                <p className="profile-location">
+                  <MapPin size={16} />
+                  {profileData.location}
+                </p>
+              </div>
+            </div>
+            <div className="profile-right">
+              <div className="profile-details">
+                <div className="detail-row">
+                  <span className="detail-label">Name:</span>
+                  <span className="detail-value">{profileData.name}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Role:</span>
+                  <span className="detail-value">{profileData.role}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Email:</span>
+                  <span className="detail-value">{profileData.email}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Email verification:</span>
+                  <span className="detail-value status-pending">{profileData.emailVerification}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Contact:</span>
+                  <span className="detail-value">{profileData.phone}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Mobile verification:</span>
+                  <span className="detail-value status-active">{profileData.mobileVerification}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Status:</span>
+                  <span className="detail-value status-active">{profileData.status}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'edit':
+        return (
+          <div className="edit-content">
+            <div className="edit-form">
+              <div className="form-group">
+                <label>Name</label>
+                <input
+                  type="text"
+                  value={editData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={editData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  value={editData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Location</label>
+                <input
+                  type="text"
+                  value={editData.location}
+                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Farm Size</label>
+                <input
+                  type="text"
+                  value={editData.farmSize}
+                  onChange={(e) => handleInputChange('farmSize', e.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>Experience</label>
+                <input
+                  type="text"
+                  value={editData.experience}
+                  onChange={(e) => handleInputChange('experience', e.target.value)}
+                  className="form-input"
+                />
+              </div>
+              <div className="form-actions">
+                <button onClick={handleSave} className="btn-save">
+                  <Save size={18} />
+                  Save Changes
+                </button>
+                <button onClick={handleCancel} className="btn-cancel">
+                  <X size={18} />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'phone':
+        return (
+          <div className="verification-content">
+            <h3>Phone Verification</h3>
+            <p>Verify your phone number to secure your account.</p>
+            <div className="verification-status">
+              <div className="status-item">
+                <Phone size={20} />
+                <span>{profileData.phone}</span>
+                <span className="status-badge status-active">Verified</span>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'id':
+        return (
+          <div className="verification-content">
+            <h3>ID Verification</h3>
+            <p>Upload your government-issued ID to verify your identity.</p>
+            <div className="upload-area">
+              <FileText size={48} />
+              <p>Click to upload ID document</p>
+            </div>
+          </div>
+        );
+      
+      case 'security':
+        return (
+          <div className="security-content">
+            <h3>Security Settings</h3>
+            <div className="security-options">
+              <div className="security-item">
+                <Key size={20} />
+                <div>
+                  <h4>Change Password</h4>
+                  <p>Update your account password</p>
+                </div>
+                <button className="btn-secondary">Change</button>
+              </div>
+              <div className="security-item">
+                <Shield size={20} />
+                <div>
+                  <h4>Two-Factor Authentication</h4>
+                  <p>Add an extra layer of security</p>
+                </div>
+                <button className="btn-secondary">Enable</button>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'activity':
+        return (
+          <div className="activity-content">
+            <h3>Activity Log</h3>
+            <div className="activity-list">
+              <div className="activity-item">
+                <Calendar size={16} />
+                <span>Profile updated</span>
+                <span className="activity-date">2 days ago</span>
+              </div>
+              <div className="activity-item">
+                <Calendar size={16} />
+                <span>Phone verified</span>
+                <span className="activity-date">1 week ago</span>
+              </div>
+              <div className="activity-item">
+                <Calendar size={16} />
+                <span>Account created</span>
+                <span className="activity-date">{profileData.joinDate}</span>
+              </div>
+            </div>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="container-profile">
       <div className="wrapper-profile">
-        {/* Profile Card */}
         <div className="card-profile">
-          {/* Header Section */}
-          <div className="header-profile">
-            <div className="header-bg-profile"></div>
-            <div className="header-content-profile">
-              <div className="avatar-profile">
-                <User size={48} strokeWidth={2} />
-              </div>
-              <div className="info-profile">
-                <h1 className="name-profile">{profileData.name}</h1>
-                <p className="role-profile">Professional Farmer</p>
-              </div>
-              <div className="actions-profile">
-                {!isEditing ? (
-                  <button onClick={handleEdit} className="btn-edit-profile">
-                    <Edit size={18} />
-                    <span>Edit Profile</span>
-                  </button>
-                ) : (
-                  <div className="actions-group-profile">
-                    <button onClick={handleSave} className="btn-save-profile">
-                      <Save size={18} />
-                      <span>Save</span>
-                    </button>
-                    <button onClick={handleCancel} className="btn-cancel-profile">
-                      <X size={18} />
-                      <span>Cancel</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="tab-navigation">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                >
+                  <Icon size={18} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-
-          {/* Stats Section */}
-          <div className="stats-profile">
-            <div className="stat-item-profile">
-              <div className="stat-icon-profile">
-                <Sprout size={24} />
-              </div>
-              <div className="stat-content-profile">
-                <p className="stat-value-profile">{profileData.farmSize}</p>
-                <p className="stat-label-profile">Farm Size</p>
-              </div>
-            </div>
-            <div className="stat-item-profile">
-              <div className="stat-icon-profile">
-                <Award size={24} />
-              </div>
-              <div className="stat-content-profile">
-                <p className="stat-value-profile">{profileData.experience}</p>
-                <p className="stat-label-profile">Experience</p>
-              </div>
-            </div>
-            <div className="stat-item-profile">
-              <div className="stat-icon-profile">
-                <Calendar size={24} />
-              </div>
-              <div className="stat-content-profile">
-                <p className="stat-value-profile">Member</p>
-                <p className="stat-label-profile">Since 2024</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Details Section */}
-          <div className="details-profile">
-            {/* Personal Information */}
-            <div className="section-profile">
-              <div className="section-header-profile">
-                <h2 className="section-title-profile">Personal Information</h2>
-                <div className="section-divider-profile"></div>
-              </div>
-              <div className="grid-profile">
-                <div className="field-profile">
-                  <div className="field-icon-profile">
-                    <Mail size={20} />
-                  </div>
-                  <div className="field-content-profile">
-                    <label className="field-label-profile">Email Address</label>
-                    {isEditing ? (
-                      <input
-                        type="email"
-                        value={editData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className="field-input-profile"
-                        placeholder="Enter email address"
-                      />
-                    ) : (
-                      <p className="field-value-profile">{profileData.email}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="field-profile">
-                  <div className="field-icon-profile">
-                    <Phone size={20} />
-                  </div>
-                  <div className="field-content-profile">
-                    <label className="field-label-profile">Phone Number</label>
-                    {isEditing ? (
-                      <input
-                        type="tel"
-                        value={editData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        className="field-input-profile"
-                        placeholder="Enter phone number"
-                      />
-                    ) : (
-                      <p className="field-value-profile">{profileData.phone}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="field-profile">
-                  <div className="field-icon-profile">
-                    <MapPin size={20} />
-                  </div>
-                  <div className="field-content-profile">
-                    <label className="field-label-profile">Location</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        className="field-input-profile"
-                        placeholder="Enter location"
-                      />
-                    ) : (
-                      <p className="field-value-profile">{profileData.location}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="field-profile">
-                  <div className="field-icon-profile">
-                    <Calendar size={20} />
-                  </div>
-                  <div className="field-content-profile">
-                    <label className="field-label-profile">Member Since</label>
-                    <p className="field-value-profile">{profileData.joinDate}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Farm Information */}
-            <div className="section-profile">
-              <div className="section-header-profile">
-                <h2 className="section-title-profile">Farm Information</h2>
-                <div className="section-divider-profile"></div>
-              </div>
-              <div className="grid-profile">
-                <div className="field-profile">
-                  <div className="field-icon-profile">
-                    <Sprout size={20} />
-                  </div>
-                  <div className="field-content-profile">
-                    <label className="field-label-profile">Farm Size</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editData.farmSize}
-                        onChange={(e) => handleInputChange('farmSize', e.target.value)}
-                        className="field-input-profile"
-                        placeholder="Enter farm size"
-                      />
-                    ) : (
-                      <p className="field-value-profile">{profileData.farmSize}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="field-profile">
-                  <div className="field-icon-profile">
-                    <Award size={20} />
-                  </div>
-                  <div className="field-content-profile">
-                    <label className="field-label-profile">Farming Experience</label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={editData.experience}
-                        onChange={(e) => handleInputChange('experience', e.target.value)}
-                        className="field-input-profile"
-                        placeholder="Enter experience"
-                      />
-                    ) : (
-                      <p className="field-value-profile">{profileData.experience}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+          
+          <div className="tab-content">
+            {renderTabContent()}
           </div>
         </div>
       </div>
