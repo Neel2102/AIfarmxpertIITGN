@@ -375,8 +375,8 @@ const Sidebar = ({ onLogout }) => {
                   className={({ isActive }) =>
                     `agent-item-sidebar ${isActive ? "active" : ""}`
                   }
-                  to="/dashboard/settings"
-                  onClick={() => handleNavigation("/dashboard/settings")}
+                  to="/dashboard/setting"
+                  onClick={() => handleNavigation("/dashboard/setting")}
                 >
                   <Settings className="agent-icon-sidebar" size={20} />
                   <span className="agent-name-sidebar">Settings</span>

@@ -90,6 +90,11 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* <Route path="/setting" element={
+              <PrivateRoute>
+                <Navigate to="/dashboard/setting" replace />
+              </PrivateRoute>
+            } /> */}
             <Route path="/dashboard/*" element={
               <PrivateRoute>
                 <MainDashboard />
