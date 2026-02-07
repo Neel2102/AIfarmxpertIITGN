@@ -155,4 +155,48 @@ class ApiService {
 // Create singleton instance
 const apiService = new ApiService();
 
+export const api = {
+    auth: {
+        getSession: async () => {
+            try {
+                return await apiService.request('/api/auth/session');
+            } catch (e) {
+                return null;
+            }
+        },
+    },
+    hardware: {
+        getDevices: async () => {
+            try {
+                const res = await apiService.request('/api/hardware/devices');
+                return Array.isArray(res) ? res : (res?.devices || []);
+            } catch (e) {
+                return [];
+            }
+        },
+    },
+    fields: {
+        getFields: async () => {
+            try {
+                const res = await apiService.request('/api/fields');
+                return Array.isArray(res) ? res : (res?.fields || []);
+            } catch (e) {
+                return [];
+            }
+        },
+    },
+    logs: {
+        addLog: async (payload) => {
+            try {
+                return await apiService.request('/api/logs', {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                });
+            } catch (e) {
+                return null;
+            }
+        },
+    },
+};
+
 export default apiService;
