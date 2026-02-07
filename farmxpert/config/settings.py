@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     data_gov_api_key: str | None = Field(default=None, validation_alias=AliasChoices("DATA_GOV_API_KEY", "data_gov_api_key"))
     data_gov_resource_id: str | None = Field(default=None, validation_alias=AliasChoices("DATA_GOV_RESOURCE_ID", "data_gov_resource_id"))
     serpapi_api_key: str | None = Field(default=None, validation_alias=AliasChoices("SERPAPI_API_KEY", "serpapi_api_key"))
+
+    blynk_token: str | None = Field(default=None, validation_alias=AliasChoices("BLYNK_TOKEN", "blynk_token"))
+    blynk_base_url: str | None = Field(default=None, validation_alias=AliasChoices("BLYNK_BASE_URL", "blynk_base_url"))
     gemini_model: str = Field(default="gemini-flash-latest")
     gemini_temperature: float = Field(default=0.4)  # Lower for faster, more consistent responses
     gemini_request_timeout: int = Field(default=20)  # Reduced timeout for faster failure detection

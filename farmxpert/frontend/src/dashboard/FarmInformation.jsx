@@ -8,12 +8,18 @@ import AllSVGChart from "./Graph/all"
 import SoilGauge from "./Graph/soil-gauge"
 import "../styles/Dashboard/FarmInfoDashboard/farminformation.css"
 
-// Simulated soil data
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000"
+
 const initialSoilData = {
-  moisture: 65,
-  temperature: 22,
-  ph: 6.5,
+  moisture: 0,
+  temperature: 0,
+  ph: 0,
   lastUpdated: new Date().toISOString(),
+  iot: {
+    status: "loading",
+    error: null,
+    source: null,
+  },
 }
 
 // Responsive chart container component
@@ -49,16 +55,65 @@ export default function FarmerDashboard() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedChart, setSelectedChart] = useState("moisture")
 
-  // Simulate fetching updated data
+  const isNum = (v) => typeof v === "number" && Number.isFinite(v)
+  const fmt1 = (v) => (isNum(v) ? v.toFixed(1) : "--")
+
+  const fetchLatestSoilData = async () => {
+    const response = await fetch(`${API_BASE_URL}/api/agents/soil-health/iot/latest`)
+    const json = await response.json()
+
+    if (!response.ok || json?.error) {
+      const msg = json?.message || `Failed to fetch IoT data (status ${response.status})`
+      throw new Error(msg)
+    }
+
+    const payload = json?.data
+    const soil = payload?.soil_data
+    if (!payload?.success || !soil) {
+      throw new Error(payload?.error || "IoT payload missing soil_data")
+    }
+
+    const moisture = typeof soil.moisture === "number" ? soil.moisture : null
+    const temperature = typeof soil.temperature === "number" ? soil.temperature : null
+    const ph = typeof soil.pH === "number" ? soil.pH : null
+
+    return {
+      moisture,
+      temperature,
+      ph,
+      fetchedAt: payload?.fetched_at || new Date().toISOString(),
+      source: payload?.source || "IoT",
+    }
+  }
+
   const refreshData = async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setSoilData({
-      moisture: Math.max(30, Math.min(90, soilData.moisture + (Math.random() - 0.5) * 10)),
-      temperature: Math.max(15, Math.min(30, soilData.temperature + (Math.random() - 0.5) * 3)),
-      ph: Math.max(5, Math.min(8, soilData.ph + (Math.random() - 0.5) * 0.5)),
-      lastUpdated: new Date().toISOString(),
-    })
+    try {
+      const latest = await fetchLatestSoilData()
+
+      setSoilData((prev) => ({
+        ...prev,
+        moisture: latest.moisture !== null ? latest.moisture : prev.moisture,
+        temperature: latest.temperature !== null ? latest.temperature : prev.temperature,
+        ph: latest.ph !== null ? latest.ph : prev.ph,
+        lastUpdated: latest.fetchedAt,
+        iot: {
+          status: "live",
+          error: null,
+          source: latest.source,
+        },
+      }))
+    } catch (e) {
+      setSoilData((prev) => ({
+        ...prev,
+        lastUpdated: new Date().toISOString(),
+        iot: {
+          status: "offline",
+          error: String(e?.message || e),
+          source: null,
+        },
+      }))
+    }
     setIsLoading(false)
   }
 
@@ -66,14 +121,14 @@ export default function FarmerDashboard() {
   const getSuggestions = () => {
     const suggestions = []
 
-    if (soilData.moisture < 40) {
+    if (isNum(soilData.moisture) && soilData.moisture < 40) {
       suggestions.push({
         type: "warning",
         title: "Low Soil Moisture",
         description: "Your soil is too dry. Consider watering your crops soon.",
         icon: Droplets,
       })
-    } else if (soilData.moisture > 80) {
+    } else if (isNum(soilData.moisture) && soilData.moisture > 80) {
       suggestions.push({
         type: "warning",
         title: "High Soil Moisture",
@@ -82,14 +137,14 @@ export default function FarmerDashboard() {
       })
     }
 
-    if (soilData.temperature < 18) {
+    if (isNum(soilData.temperature) && soilData.temperature < 18) {
       suggestions.push({
         type: "warning",
         title: "Low Soil Temperature",
         description: "Soil temperature is low. Consider using mulch to increase soil temperature.",
         icon: ThermometerSun,
       })
-    } else if (soilData.temperature > 28) {
+    } else if (isNum(soilData.temperature) && soilData.temperature > 28) {
       suggestions.push({
         type: "warning",
         title: "High Soil Temperature",
@@ -98,14 +153,14 @@ export default function FarmerDashboard() {
       })
     }
 
-    if (soilData.ph < 5.5) {
+    if (isNum(soilData.ph) && soilData.ph < 5.5) {
       suggestions.push({
         type: "warning",
         title: "Low Soil pH",
         description: "Your soil is too acidic. Consider adding lime to raise pH.",
         icon: Flask,
       })
-    } else if (soilData.ph > 7.5) {
+    } else if (isNum(soilData.ph) && soilData.ph > 7.5) {
       suggestions.push({
         type: "warning",
         title: "High Soil pH",
@@ -210,12 +265,26 @@ export default function FarmerDashboard() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div className="stat-value-farminformation">{soilData.moisture.toFixed(1)}%</div>
-                    <div className={`stat-status-farminformation ${getStatusColor(soilData.moisture, "moisture")}`}>
-                      {soilData.moisture < 40 ? "Low" : soilData.moisture > 80 ? "High" : "Optimal"}
+                    <div className="stat-value-farminformation">{fmt1(soilData.moisture)}%</div>
+                    <div
+                      className={`stat-status-farminformation ${
+                        isNum(soilData.moisture)
+                          ? getStatusColor(soilData.moisture, "moisture")
+                          : "status-warning-farminformation"
+                      }`}
+                    >
+                      {isNum(soilData.moisture)
+                        ? soilData.moisture < 40
+                          ? "Low"
+                          : soilData.moisture > 80
+                            ? "High"
+                            : "Optimal"
+                        : soilData?.iot?.status === "offline"
+                          ? "Offline"
+                          : "--"}
                     </div>
                   </div>
-                  <SoilGauge value={soilData.moisture} type="moisture" />
+                  <SoilGauge value={isNum(soilData.moisture) ? soilData.moisture : 0} type="moisture" />
                 </div>
               </div>
             </motion.div>
@@ -232,12 +301,26 @@ export default function FarmerDashboard() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div className="stat-value-farminformation">{soilData.temperature.toFixed(1)}°C</div>
-                    <div className={`stat-status-farminformation ${getStatusColor(soilData.temperature, "temperature")}`}>
-                      {soilData.temperature < 18 ? "Low" : soilData.temperature > 28 ? "High" : "Optimal"}
+                    <div className="stat-value-farminformation">{fmt1(soilData.temperature)}°C</div>
+                    <div
+                      className={`stat-status-farminformation ${
+                        isNum(soilData.temperature)
+                          ? getStatusColor(soilData.temperature, "temperature")
+                          : "status-warning-farminformation"
+                      }`}
+                    >
+                      {isNum(soilData.temperature)
+                        ? soilData.temperature < 18
+                          ? "Low"
+                          : soilData.temperature > 28
+                            ? "High"
+                            : "Optimal"
+                        : soilData?.iot?.status === "offline"
+                          ? "Offline"
+                          : "--"}
                     </div>
                   </div>
-                  <SoilGauge value={((soilData.temperature - 10) / 30) * 100} type="temperature" />
+                  <SoilGauge value={isNum(soilData.temperature) ? soilData.temperature : 0} type="temperature" />
                 </div>
               </div>
             </motion.div>
@@ -254,12 +337,24 @@ export default function FarmerDashboard() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div className="stat-value-farminformation">{soilData.ph.toFixed(1)} pH</div>
-                    <div className={`stat-status-farminformation ${getStatusColor(soilData.ph, "ph")}`}>
-                      {soilData.ph < 5.5 ? "Acidic" : soilData.ph > 7.5 ? "Alkaline" : "Optimal"}
+                    <div className="stat-value-farminformation">{fmt1(soilData.ph)} pH</div>
+                    <div
+                      className={`stat-status-farminformation ${
+                        isNum(soilData.ph) ? getStatusColor(soilData.ph, "ph") : "status-warning-farminformation"
+                      }`}
+                    >
+                      {isNum(soilData.ph)
+                        ? soilData.ph < 5.5
+                          ? "Acidic"
+                          : soilData.ph > 7.5
+                            ? "Alkaline"
+                            : "Optimal"
+                        : soilData?.iot?.status === "offline"
+                          ? "Offline"
+                          : "--"}
                     </div>
                   </div>
-                  <SoilGauge value={((soilData.ph - 4) / 6) * 100} type="ph" />
+                  <SoilGauge value={isNum(soilData.ph) ? soilData.ph : 0} type="ph" />
                 </div>
               </div>
             </motion.div>

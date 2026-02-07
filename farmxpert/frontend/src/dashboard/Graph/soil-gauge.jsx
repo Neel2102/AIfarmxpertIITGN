@@ -25,7 +25,7 @@ export default function SoilGauge({ value, type }) {
       window.removeEventListener('storage', updateTheme)
     }
   }, [])
-  const { color, unit } = useMemo(() => {
+  const { color, unit, min, max, displayValue } = useMemo(() => {
     switch (type) {
       case "moisture":
         return {
@@ -34,22 +34,25 @@ export default function SoilGauge({ value, type }) {
           unit: "%",
           min: 0,
           max: 100,
+          displayValue: value,
         }
       case "temperature":
         return {
-          color: value < 30 ? "#3b82f6" : value > 70 ? "#ef4444" : "#22c55e",
+          color: value < 18 ? "#3b82f6" : value > 28 ? "#ef4444" : "#22c55e",
           label: "Temperature",
           unit: "°C",
           min: 0,
-          max: 100,
+          max: 50,
+          displayValue: value,
         }
       case "ph":
         return {
-          color: value < 30 ? "#ef4444" : value > 80 ? "#f59e0b" : "#22c55e",
+          color: value < 5.5 ? "#ef4444" : value > 7.5 ? "#f59e0b" : "#22c55e",
           label: "pH",
           unit: "",
           min: 0,
-          max: 100,
+          max: 14,
+          displayValue: value,
         }
       default:
         return {
@@ -58,13 +61,15 @@ export default function SoilGauge({ value, type }) {
           unit: "",
           min: 0,
           max: 100,
+          displayValue: value,
         }
     }
   }, [value, type])
 
+  const percentage = Math.max(0, Math.min(100, ((displayValue - min) / (max - min)) * 100))
   const circumference = 2 * Math.PI * 45
   const strokeDasharray = circumference
-  const strokeDashoffset = circumference - (value / 100) * circumference
+  const strokeDashoffset = circumference - (percentage / 100) * circumference
   const trackColor = useMemo(() => (theme === 'dark' ? '#3a3a3a' : '#c7c9cc'), [theme])
 
   return (
@@ -99,7 +104,7 @@ export default function SoilGauge({ value, type }) {
           }}
         >
           <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: color }}>
-            {value.toFixed(0)}
+            {type === "ph" ? displayValue.toFixed(1) : displayValue.toFixed(0)}
             {unit}
           </div>
         </div>

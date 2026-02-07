@@ -16,6 +16,45 @@ const SENSORS = [
   { label: "Potassium (K)", pin: "V8", unit: "mg/kg", color: "#837E7C" },
 ];
 
+const SENSOR_RANGES = {
+  V0: { min: 0, max: 50 },
+  V1: { min: 0, max: 100 },
+  V2: { min: 0, max: 100 },
+  V3: { min: 0, max: 50 },
+  V4: { min: 0, max: 5000 },
+  V5: { min: 0, max: 14 },
+  V6: { min: 0, max: 200 },
+  V7: { min: 0, max: 200 },
+  V8: { min: 0, max: 200 },
+};
+
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+const parseNumeric = (v) => {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+};
+
+const formatValue = (n) => {
+  if (n === null || n === undefined) return "--";
+  if (!Number.isFinite(n)) return "--";
+  if (Math.abs(n) >= 1000) return String(Math.round(n));
+  if (Math.abs(n) >= 100) return n.toFixed(0);
+  if (Math.abs(n) >= 10) return n.toFixed(1);
+  return n.toFixed(2);
+};
+
+const toPercent = (pin, n) => {
+  const range = SENSOR_RANGES[pin] || { min: 0, max: 100 };
+  if (n === null) return 0;
+  const denom = range.max - range.min || 1;
+  const pct = ((n - range.min) / denom) * 100;
+  return clamp(pct, 0, 100);
+};
+
 export default function HardwareIoT() {
   const [sensorData, setSensorData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -66,13 +105,35 @@ export default function HardwareIoT() {
       ) : (
         <div className="sensors-grid">
           {SENSORS.map((sensor) => (
-            <div key={sensor.pin} className="sensor-card" style={{ borderTop: `4px solid ${sensor.color}` }}>
-              <div className="sensor-label">{sensor.label}</div>
-              <div className="sensor-value">
-                {sensorData[sensor.pin] !== undefined ? sensorData[sensor.pin] : "--"}
-                <span className="sensor-unit">{sensor.unit}</span>
-              </div>
-            </div>
+            (() => {
+              const numeric = parseNumeric(sensorData[sensor.pin]);
+              const percent = toPercent(sensor.pin, numeric);
+              const display = numeric === null ? "--" : formatValue(numeric);
+              return (
+                <div
+                  key={sensor.pin}
+                  className="sensor-card"
+                  style={{
+                    "--accent": sensor.color,
+                    "--gauge": `${percent}%`,
+                  }}
+                >
+                  <div className="sensor-card-top">
+                    <div className="sensor-label">{sensor.label}</div>
+                  </div>
+
+                  <div className="sensor-gauge" aria-label={`${sensor.label} gauge`}>
+                    <div className="sensor-gauge-inner">
+                      <div className="sensor-gauge-value">
+                        {display}
+                        <span className="sensor-unit">{sensor.unit}</span>
+                      </div>
+                      <div className="sensor-gauge-percent">{Math.round(percent)}%</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
           ))}
         </div>
       )}

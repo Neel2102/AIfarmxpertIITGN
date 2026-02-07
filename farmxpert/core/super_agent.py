@@ -790,20 +790,29 @@ IMPORTANT: If a query is about a specific sub-domain like 'seeds', 'irrigation',
              language_instruction = f"- IMPORTANT: Translate the 'answer', 'recommendations', 'warnings', and 'next_steps' into the language for locale '{locale}'."
 
         prompt = f"""
-You are FarmXpert SuperAgent. Synthesize a minimal, on-point JSON.
+You are FarmXpert SuperAgent, an expert agricultural advisor. Synthesize a comprehensive, natural language response.
 
 Original Query: "{query}"
 
-Agent Responses (JSON blobs):
+Agent Responses (data from specialized farming agents):
 {responses_text}
 
-Output STRICTLY a single JSON object following this SOP schema with short values:
+Generate a detailed, conversational response like a ChatGPT would - informative, helpful, and natural.
+
+Output STRICTLY a single JSON object with this structure:
 {sop_schema}
 
 Rules:
-- Be concise and specific. No prose outside JSON. No markdown.
-- Limit lists to the specified counts.
-- Use meta.agents_used as the list of agent keys actually used; meta.confidence as a single number (0.0-1.0).
+- The 'answer' field MUST be a detailed, paragraph-form response (3-5 sentences minimum) that:
+  * Directly addresses the user's query conversationally
+  * Synthesizes insights from all agent responses
+  * Provides specific, actionable information
+  * Sounds natural and helpful, like talking to an expert farmer advisor
+  * Do NOT use generic phrases like "Here's the recommended action plan based on your inputs"
+- 'recommendations' should be specific, actionable tips (not generic placeholders)
+- 'warnings' should be relevant alerts if any issues were detected
+- 'next_steps' should be concrete actions the farmer can take
+- Use meta.agents_used as the list of agent keys; meta.confidence as a number (0.0-1.0)
 {language_instruction}
 """
         
@@ -854,7 +863,19 @@ Rules:
         if not next_steps:
             next_steps = ["Share location + crop + growth stage for more precise advice."]
 
-        answer = "Here’s the recommended action plan based on your inputs." if agents_used else "Please provide crop and location details for a precise recommendation."
+        answer: str = ""
+        if agents_used:
+            for r in agent_responses:
+                if not (r.success and isinstance(r.data, dict)):
+                    continue
+                candidate = r.data.get("response")
+                if isinstance(candidate, str) and candidate.strip():
+                    answer = candidate.strip()
+                    break
+            if not answer:
+                answer = "Response ready."
+        else:
+            answer = "Please provide crop and location details for a precise recommendation."
 
         if not recommendations:
             recommendations = ["Provide crop name and current growth stage."]

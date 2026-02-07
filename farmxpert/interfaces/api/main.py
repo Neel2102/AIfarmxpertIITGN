@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from farmxpert.config.settings import settings
 from farmxpert.interfaces.api.routes import health_routes, agent_routes, farm_routes, auth_routes, agent_info_routes, super_agent
+from farmxpert.interfaces.api.routes import llm_usage_routes
 from farmxpert.interfaces.api.middleware.logging_middleware import RequestLoggingMiddleware
 from farmxpert.models.database import Base, engine
 import farmxpert.models.user_models  # noqa: F401
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(health_routes.router, prefix="/api")
     app.include_router(auth_routes.router, prefix="/api")
     app.include_router(agent_info_routes.router, prefix="/api")
+    app.include_router(llm_usage_routes.router, prefix="/api")
     # Orchestrator removed; super agent handles routing
     app.include_router(agent_routes.router, prefix="/api")
     app.include_router(farm_routes.router, prefix="/api")
