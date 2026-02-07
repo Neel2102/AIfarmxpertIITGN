@@ -30,11 +30,11 @@ const DashboardLayout = () => {
             weather: dashboardData.weather || { temperature: 27, humidity: 85, condition: 'Partly Cloudy' }
           });
         }
-               // Check if we're in offline mode
-               // setIsOffline(dashboardData.system?.status === 'offline');
-             } catch (e) {
-               // setIsOffline(true);
-             }
+        // Check if we're in offline mode
+        // setIsOffline(dashboardData.system?.status === 'offline');
+      } catch (e) {
+        // setIsOffline(true);
+      }
     })();
   }, []);
 
@@ -128,7 +128,6 @@ const DashboardLayout = () => {
             <Route path="*" element={<Navigate to="/dashboard/orchestrator" replace />} />
           </Routes>
         </div>
-        <AgentDetails agent={agent} />
       </div>
     </>
   );

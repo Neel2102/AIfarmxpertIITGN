@@ -295,11 +295,21 @@ const Sidebar = ({ onLogout }) => {
               >
                 <NavLink
                   className={({ isActive }) => `agent-item-sidebar ${isActive ? 'active' : ''}`}
+                  to="/dashboard/today"
+                  onClick={() => handleNavigation("/dashboard/today")}
+                >
+                  <LayoutDashboard className="agent-icon-sidebar" size={20} />
+                  <span className="agent-name-sidebar">Today</span>
+                  <span className="agent-status-sidebar active-sidebar"></span>
+                </NavLink>
+
+                <NavLink
+                  className={({ isActive }) => `agent-item-sidebar ${isActive ? 'active' : ''}`}
                   to="/dashboard/farm-information"
                   onClick={() => handleNavigation("/dashboard/farm-information")}
                 >
                   <LayoutDashboard className="agent-icon-sidebar" size={20} />
-                  <span className="agent-name-sidebar">Dashboard</span>
+                  <span className="agent-name-sidebar">Soil & Sensors</span>
                   <span className="agent-status-sidebar active-sidebar"></span>
                 </NavLink>
 

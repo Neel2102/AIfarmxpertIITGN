@@ -13,7 +13,10 @@ from farmxpert.app.agents.soil_health.router import router as soil_health_router
 from farmxpert.app.agents.market_intelligence.router import router as market_intelligence_router
 
 from farmxpert.app.agents.profit_agent.router import router as profit_router
+from farmxpert.app.agents.profit_agent.router import router as profit_router
 from farmxpert.app.agents.yield_predictor.router import router as yield_router
+from farmxpert.app.routers.farm import router as farm_router
+from farmxpert.app.routers.system import router as system_router
 
 app = FastAPI(
     title="FarmXpert AI Platform",
@@ -79,6 +82,18 @@ app.include_router(
     yield_router,
     prefix="/agents/yield",
     tags=["Yield Predictor"]
+)
+
+app.include_router(
+    farm_router,
+    prefix="/api/farms",
+    tags=["Farms"]
+)
+
+app.include_router(
+    system_router,
+    prefix="/api/system",
+    tags=["System"]
 )
 
 @app.get("/")

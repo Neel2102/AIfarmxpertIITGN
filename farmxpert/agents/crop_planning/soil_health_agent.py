@@ -40,115 +40,97 @@ Always provide practical, science-based recommendations with clear implementatio
             }
         ]
 
-    async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle soil health analysis using dynamic tools and comprehensive analysis"""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         try:
-            # Get tools from inputs
-            tools = inputs.get("tools", {})
-            context = inputs.get("context", {})
-            query = inputs.get("query", "")
-            session_id = inputs.get("session_id")
-            
-            # Get soil data from various sources
-            soil_data = await self._get_soil_data(context, session_id)
-            location = context.get("farm_location", inputs.get("location", "unknown"))
-            crop = self._extract_crop_from_query(query) or context.get("crop", "general")
-            
-            # Initialize data containers
-            sensor_data = {}
-            amendment_data = {}
-            lab_analysis_data = {}
-            soil_analysis_data = {}
-            
-            # Get soil sensor data analysis
-            if "soil_sensor" in tools and soil_data:
-                try:
-                    sensor_data = await tools["soil_sensor"].integrate_sensor_data(soil_data, location)
-                except Exception as e:
-                    self.logger.warning(f"Failed to get sensor data: {e}")
-            
-            # Get amendment recommendations
-            if "amendment_recommendation" in tools and soil_data:
-                try:
-                    amendment_data = await tools["amendment_recommendation"].recommend_soil_amendments(
-                        soil_data, crop, location
-                    )
-                except Exception as e:
-                    self.logger.warning(f"Failed to get amendment recommendations: {e}")
-            
-            # Get lab test analysis
-            if "lab_test_analyzer" in tools and soil_data:
-                try:
-                    lab_analysis_data = await tools["lab_test_analyzer"].analyze_lab_results(
-                        soil_data, crop, location
-                    )
-                except Exception as e:
-                    self.logger.warning(f"Failed to get lab analysis: {e}")
-            
-            # Get comprehensive soil analysis
-            if "soil" in tools and soil_data:
-                try:
-                    soil_analysis_data = await tools["soil"].analyze_soil_with_gemini(soil_data, location)
-                except Exception as e:
-                    self.logger.warning(f"Failed to get soil analysis: {e}")
-            
-            # Build comprehensive prompt for Gemini
-            prompt = f"""
-You are an expert soil health specialist. Based on the following comprehensive analysis, provide detailed soil health recommendations for the farmer.
+            from farmxpert.tools.crop_planning.soil_sensor import SoilSensorTool
+            self.iot_soil_tool = SoilSensorTool()
+        except ImportError:
+            self.iot_soil_tool = None
+            self.logger.warning("Could not import IoT SoilSensorTool")
 
-Farmer's Query: "{query}"
+    async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle soil health analysis using dynamic tools and comprehensive analysis with LLM reasoning."""
+        # Get tools from inputs
+        tools = inputs.get("tools", {})
+        context = inputs.get("context", {})
+        query = inputs.get("query", "")
+        session_id = inputs.get("session_id")
+        
+        # Get soil data from various sources
+        soil_data = await self._get_soil_data(context, session_id)
+        location = context.get("farm_location", inputs.get("location", "unknown"))
+        crop = self._extract_crop_from_query(query) or context.get("crop", "general")
+        
+        # Initialize data containers
+        tool_data = {
+            "soil_data": soil_data,
+            "iot_readings": {},
+            "analysis_results": {}
+        }
+        
+        # --- 1. REAL SENSOR DATA (Fast) ---
+        if self.iot_soil_tool:
+            try:
+                real_iot_data = self.iot_soil_tool.get_realtime_data()
+                tool_data["iot_readings"] = real_iot_data
+                
+                # Update basic soil_data if likely outdated or missing
+                if real_iot_data:
+                    soil_data["moisture"] = real_iot_data.get("moisture_percent", soil_data.get("moisture"))
+                    soil_data["ph"] = real_iot_data.get("ph_level", soil_data.get("ph"))
+                    if "npk" not in soil_data: soil_data["npk"] = {}
+                    soil_data["npk"]["nitrogen"] = real_iot_data.get("nitrogen_mg_kg", soil_data["npk"].get("nitrogen"))
+                    soil_data["npk"]["phosphorus"] = real_iot_data.get("phosphorus_mg_kg", soil_data["npk"].get("phosphorus"))
+                    soil_data["npk"]["potassium"] = real_iot_data.get("potassium_mg_kg", soil_data["npk"].get("potassium"))
+                
+                self.logger.info("Integrated IoT Soil Sensor data")
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch IoT sensor data: {e}")
 
-Analysis Results:
-- Location: {location}
-- Crop: {crop}
-- Soil Data: {json.dumps(soil_data, indent=2)}
-- Sensor Analysis: {sensor_data.get('health_assessment', {})}
-- Amendment Recommendations: {amendment_data.get('lime_recommendations', {})}
-- Lab Analysis: {lab_analysis_data.get('health_score', {})}
-- Soil Analysis: {soil_analysis_data.get('soil_health_score', {})}
+        # --- 2. PARALLEL TOOL EXECUTION (Gemini-based) ---
+        # Define tasks for available tools
+        tasks = []
+        task_names = []
 
-Provide comprehensive soil health recommendations including:
-1. Overall soil health assessment
-2. Immediate action items
-3. Long-term improvement strategies
-4. Amendment application schedule
-5. Monitoring and testing recommendations
-6. Expected improvements and timeline
-7. Cost considerations
-8. Risk factors and mitigation
+        # Soil Analysis
+        if "soil" in tools and soil_data:
+            tasks.append(tools["soil"].analyze_soil_with_gemini(soil_data, location))
+            task_names.append("comprehensive_analysis")
 
-Format your response as a natural conversation with the farmer.
-"""
+        # Amendment Recommendations
+        if "amendment_recommendation" in tools and soil_data:
+            tasks.append(tools["amendment_recommendation"].recommend_soil_amendments(soil_data, crop, location))
+            task_names.append("amendments")
 
-            response = await gemini_service.generate_response(prompt, {"agent": self.name, "task": "soil_health_analysis"})
+        # Lab Analysis (if available)
+        if "lab_test_analyzer" in tools and soil_data:
+            tasks.append(tools["lab_test_analyzer"].analyze_lab_results(soil_data, crop, location))
+            task_names.append("lab_analysis")
 
-            # If LLM quota/rate limit is hit, fall back to deterministic output
-            resp_lower = (response or "").lower()
-            if "429" in resp_lower or "quota" in resp_lower or "rate limit" in resp_lower:
-                return await self._handle_traditional(inputs)
+        # Execute in parallel
+        if tasks:
+            import asyncio
+            results = await asyncio.gather(*tasks, return_exceptions=True)
             
-            return {
-                "agent": self.name,
-                "success": True,
-                "response": response,
-                "data": {
-                    "soil_data": soil_data,
-                    "location": location,
-                    "crop": crop,
-                    "sensor_data": sensor_data,
-                    "amendment_data": amendment_data,
-                    "lab_analysis_data": lab_analysis_data,
-                    "soil_analysis_data": soil_analysis_data
-                },
-                "recommendations": self._extract_recommendations_from_data(amendment_data, soil_analysis_data),
-                "warnings": self._extract_warnings_from_data(sensor_data, lab_analysis_data),
-                "metadata": {"model": "gemini", "tools_used": list(tools.keys())}
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error in soil health agent: {e}")
-            # Fallback to traditional method
-            return await self._handle_traditional(inputs)
+            for name, res in zip(task_names, results):
+                if isinstance(res, Exception):
+                    self.logger.warning(f"Tool {name} failed: {res}")
+                    tool_data["analysis_results"][name] = {"error": str(res)}
+                else:
+                    tool_data["analysis_results"][name] = res
+        
+        # --- 3. INJECT INTO LLM CONTEXT ---
+        inputs["additional_data"] = inputs.get("additional_data", {})
+        inputs["additional_data"]["soil_analysis_tool_results"] = tool_data
+        
+        # Ensure updated soil data is reflected in context
+        inputs["soil"] = soil_data 
+        if "context" in inputs:
+            inputs["context"]["soil_data"] = soil_data
+
+        # --- 4. EXECUTE WITH INTELLIGENT AGENT ---
+        return await self._handle_with_llm(inputs)
     
     async def _handle_traditional(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Fallback traditional soil health analysis method"""

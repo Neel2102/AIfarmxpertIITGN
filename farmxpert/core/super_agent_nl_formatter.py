@@ -13,7 +13,7 @@ def format_response_as_natural_language(
     context: Dict[str, Any] = None
 ) -> str:
     """
-    Convert structured response into natural language
+    Convert structured response into natural, conversational language
     
     Args:
         query: Original user query
@@ -22,13 +22,13 @@ def format_response_as_natural_language(
         context: Optional context (locale, conversational mode, etc.)
         
     Returns:
-        Clean natural language response string
+        Clean natural language response string that feels like expert guidance
     """
-    # Check if conversational mode is enabled
-    conversational = context.get("conversational", False) if context else False
+    # Check if conversational mode is enabled (default to True for better UX)
+    conversational = context.get("conversational", True) if context else True
     
     # Extract key components
-    answer = response_data.get("answer", "")
+    answer = response_data.get("answer") or response_data.get("response") or ""
     recommendations = response_data.get("recommendations", [])
     warnings = response_data.get("warnings", [])
     next_steps = response_data.get("next_steps", [])
@@ -36,50 +36,66 @@ def format_response_as_natural_language(
     # Build natural language response
     parts = []
     
-    # Main answer
+    # Main answer - this should be the detailed response
     if answer:
         parts.append(answer)
     
-    # Recommendations
+    # Recommendations - format as helpful tips
     if recommendations:
         if conversational:
-            parts.append("\n\nHere's what I recommend:")
+            parts.append("\n\n🌱 **Here's what I recommend:**")
         else:
             parts.append("\n\n**Recommendations:**")
         for i, rec in enumerate(recommendations, 1):
-            parts.append(f"\n{i}. {rec}")
+            # Clean up recommendation text
+            rec_text = str(rec).strip()
+            if rec_text:
+                parts.append(f"\n• {rec_text}")
     
-    # Warnings
+    # Warnings - format as important alerts
     if warnings:
         if conversational:
-            parts.append("\n\n⚠️ Important things to note:")
+            parts.append("\n\n⚠️ **Important to keep in mind:**")
         else:
             parts.append("\n\n**Important Warnings:**")
         for warning in warnings:
-            parts.append(f"\n• {warning}")
+            warning_text = str(warning).strip()
+            if warning_text:
+                parts.append(f"\n⚠️ {warning_text}")
     
-    # Next steps
+    # Next steps - format as actionable guidance
     if next_steps:
         if conversational:
-            parts.append("\n\nNext, you should:")
+            parts.append("\n\n📋 **Your action plan:**")
         else:
             parts.append("\n\n**Next Steps:**")
         for i, step in enumerate(next_steps, 1):
-            parts.append(f"\n{i}. {step}")
+            step_text = str(step).strip()
+            if step_text:
+                parts.append(f"\n{i}. {step_text}")
+    
     
     # Fallback if no content
     if not parts:
-        return "I understand your question, but I need more information to provide a helpful answer. Could you please provide more details about your crop, location, or specific concern?"
+        return ("I'd be happy to help you with your farming questions! To give you the best advice, "
+                "could you share some details about:\n\n"
+                "• What crop you're growing\n"
+                "• Your location or region\n"
+                "• Any specific concerns or challenges you're facing\n\n"
+                "With this information, I can provide personalized recommendations for your farm.")
     
     return "".join(parts)
 
+
+import re
 
 def create_simple_greeting_response(query: str) -> str:
     """Handle simple greetings intelligently"""
     q_lower = query.lower().strip()
     
-    # Greetings
-    if q_lower in ["hi", "hello", "hey", "namaste", "namaskar"]:
+    # Greetings (hi, hello, etc.)
+    greeting_pattern = r"^(hi+|hello|hey|hola|namaste|namaskar|good\s*(morning|afternoon|evening)|greetings).{0,20}$"
+    if re.match(greeting_pattern, q_lower):
         return ("Hello! I'm FarmXpert, your AI farming assistant. "
                 "I can help you with crop selection, pest management, irrigation planning, "
                 "weather forecasts, and much more. What would you like to know about your farm today?")
@@ -99,16 +115,24 @@ def create_simple_greeting_response(query: str) -> str:
         return ("Goodbye! Wishing you a bountiful harvest. Come back anytime you need farming advice. "
                 "Happy farming! 🌾")
     
-    return None  # Not a simple greeting
+    # Fallback for safety
+    return ("Hello! I'm FarmXpert. How can I help you with your farming activities today?")
 
 
 def is_simple_query(query: str) -> bool:
     """Check if query is a simple greeting/small talk"""
     q_lower = query.lower().strip()
+    
+    # Greeting pattern
+    greeting_pattern = r"^(hi+|hello|hey|hola|namaste|namaskar|good\s*(morning|afternoon|evening)|greetings).{0,20}$"
+    if re.match(greeting_pattern, q_lower):
+        return True
+        
     simple_patterns = [
-        "hi", "hello", "hey", "namaste", "namaskar",
         "how are you", "how r u", "what's up", "whats up",
         "thank you", "thanks", "thank u", "dhanyavaad",
         "bye", "goodbye", "see you", "good night"
     ]
+    # Use word boundary check or exact constraints for others
+    # For simplicity in this helper, strict substring is okay for phrases, but 'hi' was the dangerous one.
     return any(pattern in q_lower for pattern in simple_patterns)

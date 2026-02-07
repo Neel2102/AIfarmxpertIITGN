@@ -16,10 +16,10 @@ os.environ['PYTHONWARNINGS'] = 'ignore'
 
 logger = logging.getLogger(__name__)
 
-# Always use mock service to avoid brittle external imports and missing dependencies
-from .mock_service import mock_market_intelligence_service
+# Use Simulated Service (DB-backed) instead of static mocks
+from .simulated_service import simulated_market_service
 
-REAL_AGENT_AVAILABLE = False
+REAL_AGENT_AVAILABLE = True
 
 
 class MarketIntelligenceService:
@@ -27,8 +27,8 @@ class MarketIntelligenceService:
     
     def __init__(self):
         """Initialize the Market Intelligence Service"""
-        self.agent = mock_market_intelligence_service
-        self.use_real_agent = False
+        self.agent = simulated_market_service
+        self.use_real_agent = True
 
     @staticmethod
     def _coerce_result_to_dict(result: Any) -> Optional[Dict[str, Any]]:

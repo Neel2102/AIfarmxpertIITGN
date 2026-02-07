@@ -23,6 +23,58 @@ class GeminiService:
         self._usage_events_max = 500
         self._usage_lock = asyncio.Lock()
         self._initialize_gemini()
+
+    def _looks_like_sdk_accessor_warning(self, text: str) -> bool:
+        if not text or not isinstance(text, str):
+            return False
+        t = text.lower()
+        return (
+            "quick accessor" in t
+            and "response.text" in t
+            and "result.parts" in t
+        )
+
+    def _extract_text_from_response(self, response: Any) -> str:
+        """Extract plain text from google-generativeai response objects.
+
+        The SDK may return multi-part responses where `response.text` is not usable.
+        We prefer candidates[0].content.parts[].text and fall back to `response.text`.
+        """
+        if response is None:
+            return ""
+
+        # First try SDK's convenience attribute if present.
+        try:
+            text = getattr(response, "text", None)
+            if isinstance(text, str) and text.strip() and not self._looks_like_sdk_accessor_warning(text):
+                return text.strip()
+        except Exception:
+            pass
+
+        # Fallback: dig into candidates/content/parts
+        try:
+            candidates = getattr(response, "candidates", None)
+            if isinstance(candidates, list) and candidates:
+                for cand in candidates:
+                    content = getattr(cand, "content", None)
+                    parts = getattr(content, "parts", None) if content is not None else None
+                    if isinstance(parts, list) and parts:
+                        chunks: List[str] = []
+                        for p in parts:
+                            pt = getattr(p, "text", None)
+                            if isinstance(pt, str) and pt:
+                                chunks.append(pt)
+                        out = "".join(chunks).strip()
+                        if out:
+                            return out
+        except Exception:
+            pass
+
+        # Final fallback: stringify
+        try:
+            return str(response).strip()
+        except Exception:
+            return ""
     
     def _initialize_gemini(self):
         """Initialize Gemini API with fallback models"""
@@ -65,18 +117,21 @@ class GeminiService:
         try:
             context = context or {}
 
+            bypass_cache = bool(context.get("no_cache"))
+
             # Check cache first to reduce API usage
             cache_key = self._get_cache_key(prompt, context)
-            cached_response = await self._get_cached_response(cache_key)
-            if cached_response:
-                await self._record_usage(
-                    prompt=prompt,
-                    output=cached_response,
-                    context=context,
-                    cached=True,
-                    usage_metadata=None,
-                )
-                return cached_response
+            if not bypass_cache:
+                cached_response = await self._get_cached_response(cache_key)
+                if cached_response:
+                    await self._record_usage(
+                        prompt=prompt,
+                        output=cached_response,
+                        context=context,
+                        cached=True,
+                        usage_metadata=None,
+                    )
+                    return cached_response
 
             allowed = await self._acquire_rate_limit_slot()
             if not allowed:
@@ -106,7 +161,10 @@ class GeminiService:
             )
             
             # Ensure trimmed minimal text
-            out = (response.text or "").strip()
+            out = self._extract_text_from_response(response)
+            if self._looks_like_sdk_accessor_warning(out):
+                # Never leak SDK guidance to the user; treat as empty so fallbacks apply.
+                out = ""
             await self._record_usage(
                 prompt=full_prompt,
                 output=out,
@@ -115,7 +173,8 @@ class GeminiService:
                 usage_metadata=getattr(response, "usage_metadata", None),
             )
             if out:
-                await self._cache_response(cache_key, out)
+                if not bypass_cache:
+                    await self._cache_response(cache_key, out)
             return out
         except Exception as e:
             msg = str(e)
@@ -164,10 +223,13 @@ class GeminiService:
         if not self.model:
             yield "Gemini API not available. Please check your API key configuration."
             return
+
+        context = context or {}
+        bypass_cache = bool(context.get("no_cache"))
         
         # Check cache first
         cache_key = self._get_cache_key(prompt, context)
-        cached_response = await self._get_cached_response(cache_key)
+        cached_response = None if bypass_cache else await self._get_cached_response(cache_key)
         
         if cached_response:
             # Simulate streaming for cached responses
@@ -214,15 +276,19 @@ class GeminiService:
             
             # Stream the response chunks
             for chunk in response_stream:
-                if chunk.text:
-                    full_response += chunk.text
-                    yield chunk.text
+                piece = self._extract_text_from_response(chunk)
+                if self._looks_like_sdk_accessor_warning(piece):
+                    piece = ""
+                if piece:
+                    full_response += piece
+                    yield piece
                     # Small delay to prevent overwhelming the frontend
                     await asyncio.sleep(0.01)
             
             # Cache the complete response
             if full_response:
-                await self._cache_response(cache_key, full_response)
+                if not bypass_cache:
+                    await self._cache_response(cache_key, full_response)
                     
         except asyncio.TimeoutError:
             self.logger.error("Gemini API request timed out")
@@ -238,14 +304,19 @@ class GeminiService:
     
     def _get_cache_key(self, prompt: str, context: Dict[str, Any] = None) -> str:
         """Generate a cache key for the prompt and context"""
+        ctx = context or {}
         cache_data = {
             "prompt": prompt,
-            "context": context or {},
+            "context": ctx,
             "model": settings.gemini_model,
             "temperature": settings.gemini_temperature,
             "top_p": settings.gemini_top_p,
             "top_k": settings.gemini_top_k
         }
+
+        # If the caller passes a session_id, scope cache to the session to avoid "stuck" responses.
+        if isinstance(ctx, dict) and ctx.get("session_id"):
+            cache_data["session_id"] = str(ctx.get("session_id"))
         cache_string = json.dumps(cache_data, sort_keys=True)
         return hashlib.md5(cache_string.encode()).hexdigest()
     
@@ -493,24 +564,48 @@ Provide analysis in structured plain text format with price trends, market oppor
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
         """Parse JSON response from Gemini"""
         try:
+            if not response:
+                return {}
+                
+            # Check for API errors returned as plain text
+            if "Gemini API not available" in response or "limit" in response.lower():
+                return {"error": response}
+
             import json
             # Extract JSON from response if it's wrapped in markdown
             if '```json' in response:
                 start = response.find('```json') + 7
                 end = response.find('```', start)
                 json_str = response[start:end].strip()
+            # Handle standard markdown block without 'json' language tag
+            elif '```' in response:
+                start = response.find('```') + 3
+                end = response.find('```', start)
+                json_str = response[start:end].strip()
             else:
                 # Try to find JSON in the response
                 start = response.find('{')
                 end = response.rfind('}') + 1
-                json_str = response[start:end]
+                if start != -1 and end != -1:
+                    json_str = response[start:end]
+                else:
+                    json_str = response
             
             return json.loads(json_str)
         except Exception as e:
             self.logger.error(f"Failed to parse JSON response: {e}")
+            # Try to sanitize and parse if common issues exist (common in some LLM outputs)
+            try:
+                # Sometimes LLMs output single quotes instead of double
+                if "'" in response and '"' not in response:
+                    import ast
+                    return ast.literal_eval(response)
+            except:
+                pass
+                
             return {
                 "error": "Failed to parse response",
-                "raw_response": response
+                # Do not return raw_response to avoid polluting logs/contexts with massive strings
             }
 
 # Global instance

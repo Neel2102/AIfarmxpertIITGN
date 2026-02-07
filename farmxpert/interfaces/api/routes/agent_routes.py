@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any, List, Optional
 import asyncio
 import time
+import json
 from farmxpert.core.base_agent.agent_registry import list_agents, create_agent
 
 
@@ -95,6 +96,87 @@ def _build_agent_ui_item(agent_name: str, success: bool, data: Any, error: Optio
         "summary": summary,
         "widgets": widgets
     }
+
+
+def _safe_list_str(items: Any, max_items: int = 4) -> List[str]:
+    if not isinstance(items, list):
+        return []
+    out: List[str] = []
+    for x in items:
+        s = str(x).strip()
+        if not s:
+            continue
+        out.append(s)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _build_farmer_response_text(agent_name: str, response_text: str, payload: Dict[str, Any]) -> str:
+    """Normalize agent responses into a consistent, farmer-friendly format.
+
+    This is deterministic (no extra LLM call) and reduces one-liner / repetitive outputs.
+    """
+    base = (response_text or "").strip()
+
+    # Collect potential reasons
+    reasons: List[str] = []
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    if isinstance(data, dict):
+        detailed = data.get("detailed_reasoning")
+        if isinstance(detailed, dict):
+            for k in ("weather_impact", "soil_impact", "water_impact", "market_impact", "fertilizer_impact"):
+                v = detailed.get(k)
+                if isinstance(v, str) and v.strip():
+                    reasons.append(v.strip())
+
+        for k in ("reasoning", "analysis_summary", "llm_explanation", "summary"):
+            v = data.get(k)
+            if isinstance(v, str) and v.strip():
+                reasons.append(v.strip())
+
+    reasons = [r for i, r in enumerate(reasons) if r and r not in reasons[:i]]
+
+    # Collect actions
+    recommendations = _safe_list_str(payload.get("recommendations"), max_items=4)
+    next_steps = _safe_list_str(payload.get("next_steps"), max_items=4)
+    actions = recommendations + [s for s in next_steps if s not in recommendations]
+
+    warnings = _safe_list_str(payload.get("warnings"), max_items=4)
+
+    # Build a consistent message
+    parts: List[str] = []
+    if base:
+        parts.append("Direct Answer:\n" + base)
+    else:
+        parts.append("Direct Answer:\nI can help, but I need a bit more detail to give the best advice.")
+
+    if reasons:
+        parts.append("\nReasons:\n" + "\n".join([f"- {r}" for r in reasons[:3]]))
+
+    if actions:
+        parts.append("\nWhat to do now:\n" + "\n".join([f"- {a}" for a in actions[:4]]))
+
+    if warnings:
+        parts.append("\nWarnings:\n" + "\n".join([f"- {w}" for w in warnings[:4]]))
+
+    # A light clarifying question to reduce repetitive outputs next turn
+    follow_up = payload.get("follow_up_question")
+    if not isinstance(follow_up, str) or not follow_up.strip():
+        # Agent-specific defaults
+        if "crop" in agent_name:
+            follow_up = "Which state/district is your farm in, and what is your current season (Kharif/Rabi)?"
+        elif "soil" in agent_name:
+            follow_up = "Do you have pH and N-P-K values from a soil test or sensor?"
+        elif "weather" in agent_name:
+            follow_up = "What is your village/district (or share latitude/longitude) so I can localize the forecast?"
+        elif "market" in agent_name:
+            follow_up = "Which crop and which nearby mandi do you usually sell at?"
+        else:
+            follow_up = "What is your location and which crop are you referring to?"
+
+    parts.append("\nNext question:\n" + str(follow_up).strip())
+    return "\n".join(parts).strip()
 
 
 def _build_smart_chat_ui(answer_text: str, agent_name: str, success: bool, data: Any, error: Optional[str]) -> Dict[str, Any]:
@@ -275,15 +357,52 @@ async def invoke_agent(agent_name: str, inputs: Dict[str, Any]) -> Dict[str, Any
         return {"success": True, "response": res}
 
     success = bool(res.get("success", True)) and not bool(res.get("error"))
+
+    data_for_ui = res.get("data") if isinstance(res.get("data"), dict) else res
+
     response_text = res.get("response")
+    if response_text is None and res.get("natural_language"):
+        response_text = res.get("natural_language")
+    if response_text is None and res.get("answer"):
+        response_text = res.get("answer")
     if response_text is None and res.get("message"):
         response_text = res.get("message")
     if response_text is None and res.get("error"):
         response_text = str(res.get("error"))
+
+    # Many agents return only structured data under `data` and no natural language field.
+    # In that case, attempt to extract a meaningful text from nested keys.
+    if response_text is None and isinstance(data_for_ui, dict):
+        response_text = _find_first_key(
+            data_for_ui,
+            [
+                "response",
+                "natural_language",
+                "answer",
+                "message",
+                "summary",
+                "llm_explanation",
+                "analysis_summary",
+            ],
+        )
+
+    # Last-resort fallback: provide a compact JSON snippet instead of a hardcoded placeholder.
+    if response_text is None and success and isinstance(data_for_ui, dict):
+        try:
+            response_text = json.dumps(data_for_ui, ensure_ascii=False)[:800]
+        except Exception:
+            response_text = str(data_for_ui)[:800]
+
     if response_text is None:
         response_text = "Response ready." if success else "Sorry, something went wrong."
 
-    data_for_ui = res.get("data") if isinstance(res.get("data"), dict) else res
+    # Farmer-friendly formatting for consistent UX
+    try:
+        if isinstance(response_text, str):
+            response_text = _build_farmer_response_text(agent_name=agent_name, response_text=response_text, payload=res)
+    except Exception:
+        # Never fail the request due to formatting
+        pass
     ui = _build_smart_chat_ui(
         answer_text=str(response_text) if isinstance(response_text, str) else "Response ready.",
         agent_name=agent_name,

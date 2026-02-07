@@ -118,11 +118,22 @@ class EnhancedBaseAgent(BaseAgent):
     
     def _get_system_prompt(self) -> str:
         """Get the system prompt for this agent"""
-        return f"""You are {self.name}, a specialized AI agent for {self.description}.
+        return f"""You are {self.name}, a world-class agricultural expert specialized in {self.description}.
 
-Your role is to provide expert, accurate, and actionable advice to farmers.
-Always consider the context, farm conditions, and user preferences when making recommendations.
-Provide responses in clear, practical language suitable for farmers of all experience levels."""
+Your goal is to provide precise, data-backed, and actionable advice to the farmer.
+
+CORE INSTRUCTIONS:
+1.  **Analyze Context**: deep-dive into the provided soil data, weather, and conversation history.
+2.  **Reason Step-by-Step**: Before answering, think through the problem. Consider causes, effects, and dependencies.
+3.  **Use Tools**: If you have tool outputs (in Context/Data), USE them. Do not hallucinate numbers if real data is available.
+4.  **Be Practical**: Farmers need clear steps, not academic theory. Use simple language but expert concepts.
+5.  **Memory**: The user may refer to previous messages (e.g., "what about for wheat?"). Use the 'Conversation History' to resolve context.
+
+Response Logic:
+- If tool data is present -> Synthesize it into a clear answer.
+- If data is missing -> Ask the user for it or provide general advice with a disclaimer.
+- If unsure -> Admit it. Do not make up facts.
+"""
     
     def _get_examples(self) -> List[Dict[str, str]]:
         """Get example conversations for this agent"""
@@ -131,95 +142,7 @@ Provide responses in clear, practical language suitable for farmers of all exper
     def _get_tools(self) -> List[Dict[str, Any]]:
         """Get tools/functions available to this agent"""
         return []
-    
-    async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Enhanced handle method that can use LLM when needed
-        Maintains compatibility with existing agent interface
-        """
-        if self.use_llm and self._should_use_llm(inputs):
-            return await self._handle_with_llm(inputs)
-        else:
-            return await self._handle_traditional(inputs)
-    
-    def _should_use_llm(self, inputs: Dict[str, Any]) -> bool:
-        """Determine if LLM should be used for this request"""
-        # Use LLM for complex queries or when explicitly requested
-        query = inputs.get('query', '')
-        use_llm_flag = inputs.get('use_llm', False)
-        
-        # Prefer LLM more often; only bypass for very short queries
-        if len(query) < 8:
-            return False
-        
-        # Complex queries benefit from LLM
-        complex_keywords = ['analyze', 'recommend', 'explain', 'compare', 'why', 'how', 'best', 'suggest', 'plan']
-        if any(keyword in query.lower() for keyword in complex_keywords):
-            return True
-        
-        return use_llm_flag
-    
-    async def _handle_with_llm(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle request using LLM capabilities"""
-        start_time = datetime.now()
-        self.status = AgentStatus.RUNNING
-        
-        try:
-            self.logger.info(f"Processing with LLM: {inputs.get('query', '')[:100]}...")
-            
-            # Prepare context and prompt
-            context = self._prepare_context(inputs)
-            prompt = self._build_prompt(inputs, context)
-            
-            # Get LLM response
-            response = await self._get_llm_response(prompt, inputs)
-            
-            # Parse and validate response
-            parsed_response = self._parse_response(response)
-            
-            # Create output
-            output = {
-                "agent": self.name,
-                "success": True,
-                "response": parsed_response.get("response", ""),
-                "recommendations": parsed_response.get("recommendations", []),
-                "warnings": parsed_response.get("warnings", []),
-                "insights": parsed_response.get("insights", []),
-                "data": parsed_response.get("data", {}),
-                "confidence": parsed_response.get("confidence", 0.8),
-                "metadata": {
-                    "method": "llm",
-                    "execution_time": (datetime.now() - start_time).total_seconds(),
-                    "model": "gemini-pro"
-                }
-            }
-            
-            self.status = AgentStatus.COMPLETED
-            self.logger.info("LLM processing completed successfully")
-            
-            return output
-            
-        except Exception as e:
-            self.logger.error(f"LLM processing failed: {str(e)}")
-            self.status = AgentStatus.FAILED
-            
-            # Fallback to traditional method
-            return await self._handle_traditional(inputs)
-    
-    async def _handle_traditional(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle request using traditional agent logic"""
-        self.logger.info("Using traditional agent logic")
-        
-        # This should be implemented by subclasses
-        # For now, return a basic response
-        return {
-            "agent": self.name,
-            "success": True,
-            "response": f"Traditional {self.name} response",
-            "data": inputs,
-            "metadata": {"method": "traditional"}
-        }
-    
+
     def _prepare_context(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Prepare context for LLM processing"""
         context = {
@@ -227,16 +150,34 @@ Provide responses in clear, practical language suitable for farmers of all exper
             "farm_location": inputs.get("location", ""),
             "season": inputs.get("season", ""),
             "soil_data": inputs.get("soil", {}),
+            "chat_history": inputs.get("context", {}).get("chat_history", []), # Capture history
             "additional_data": inputs
         }
         
         # Add any other relevant context from inputs
         for key, value in inputs.items():
-            if key not in ["query", "location", "season", "soil"]:
+            if key not in ["query", "location", "season", "soil", "context"]:
                 context[key] = value
         
         return context
-    
+
+    def _format_history(self, history: List[Dict[str, Any]]) -> str:
+        """Format conversation history for prompt"""
+        if not history:
+            return "No previous conversation."
+            
+        formatted = []
+        # Take last 10 turns to maintain context without overflowing token limits
+        recent_history = history[-10:] 
+        
+        for turn in recent_history:
+            role = "Farmer" if turn.get("role") == "user" else "Expert"
+            content = turn.get("content", "").strip()
+            if content:
+                formatted.append(f"{role}: {content}")
+        
+        return "\n".join(formatted)
+
     def _build_prompt(self, inputs: Dict[str, Any], context: Dict[str, Any]) -> str:
         """Build the complete prompt for LLM"""
         system_prompt = self.config["system_prompt"]
@@ -245,6 +186,9 @@ Provide responses in clear, practical language suitable for farmers of all exper
         
         # Build context string
         context_str = self._format_context(context)
+        
+        # Build history string
+        history_str = self._format_history(context.get("chat_history", []))
         
         # Build examples string
         examples_str = self._format_examples(examples)
@@ -259,13 +203,17 @@ Provide responses in clear, practical language suitable for farmers of all exper
 
 {examples_str}
 
-Context: {context_str}
+Conversation History:
+{history_str}
+
+Current Context:
+{context_str}
 
 User Query: {inputs.get('query', '')}
 
 Please provide a comprehensive response in the following JSON format:
 {{
-    "response": "Main response text",
+    "response": "Main response text (markdown supported)",
     "recommendations": ["recommendation1", "recommendation2"],
     "warnings": ["warning1", "warning2"],
     "insights": ["insight1", "insight2"],
@@ -276,55 +224,6 @@ Please provide a comprehensive response in the following JSON format:
 Response:"""
         
         return prompt
-    
-    def _format_context(self, context: Dict[str, Any]) -> str:
-        """Format context for prompt"""
-        context_parts = []
-        
-        if context.get("farm_location"):
-            context_parts.append(f"Farm Location: {context['farm_location']}")
-        
-        if context.get("season"):
-            context_parts.append(f"Season: {context['season']}")
-        
-        if context.get("soil_data"):
-            soil = context["soil_data"]
-            if isinstance(soil, dict) and soil:
-                soil_str = ", ".join([f"{k}: {v}" for k, v in soil.items()])
-                context_parts.append(f"Soil Data: {soil_str}")
-        
-        if context.get("additional_data"):
-            additional = context["additional_data"]
-            if isinstance(additional, dict) and additional:
-                for key, value in additional.items():
-                    if key not in ["query", "location", "season", "soil"]:
-                        context_parts.append(f"{key}: {value}")
-        
-        return "\n".join(context_parts) if context_parts else "No specific context provided"
-    
-    def _format_examples(self, examples: List[Dict[str, str]]) -> str:
-        """Format examples for prompt"""
-        if not examples:
-            return ""
-        
-        examples_str = "Examples:\n"
-        for i, example in enumerate(examples, 1):
-            examples_str += f"Example {i}:\n"
-            examples_str += f"Input: {example.get('input', '')}\n"
-            examples_str += f"Output: {example.get('output', '')}\n\n"
-        
-        return examples_str
-    
-    def _format_tools(self, tools: List[Dict[str, Any]]) -> str:
-        """Format tools for prompt"""
-        if not tools:
-            return ""
-        
-        tools_str = "Available Tools:\n"
-        for tool in tools:
-            tools_str += f"- {tool.get('name', '')}: {tool.get('description', '')}\n"
-        
-        return tools_str
     
     async def _get_llm_response(self, prompt: str, inputs: Dict[str, Any]) -> str:
         """Get response from LLM with retry logic"""

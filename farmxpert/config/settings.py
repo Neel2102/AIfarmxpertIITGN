@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     gemini_top_p: float = Field(default=0.8)  # Focus on most likely tokens
     gemini_top_k: int = Field(default=40)  # Limit vocabulary for speed
 
-    low_llm_mode: bool = Field(default=True)
+    low_llm_mode: bool = Field(default=False)
 
     database_url: str = Field(default="sqlite:///./farmxpert.db")
     redis_url: str = Field(default="redis://localhost:6379/0")

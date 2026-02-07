@@ -168,7 +168,6 @@ Format your response as a natural conversation with the farmer.
         budget = context.get("preferences", {}).get("budget", "medium")
         location = context.get("farm_location", inputs.get("location", "unknown"))
         
-        # Basic seed variety recommendations
         seed_recommendations = {
             "wheat": {
                 "high_yield": [
@@ -191,18 +190,48 @@ Format your response as a natural conversation with the farmer.
                     {"variety": "Pioneer-3396", "type": "GMO", "yield_potential": "80-85 q/ha", "price": "₹4500/bag"},
                     {"variety": "DKC-9141", "type": "Hybrid", "yield_potential": "75-80 q/ha", "price": "₹4200/bag"}
                 ]
+            },
+            "cotton": {
+                "high_yield": [
+                    {"variety": "RCH-659", "type": "Bt Cotton", "yield_potential": "30-35 q/ha", "price": "₹850/packet"},
+                    {"variety": "Magic-55", "type": "Bt Cotton", "yield_potential": "28-32 q/ha", "price": "₹800/packet"}
+                ],
+                "disease_resistant": [
+                    {"variety": "Ajit-155", "type": "Bt Cotton", "yield_potential": "25-30 q/ha", "price": "₹780/packet"},
+                    {"variety": "Bunny", "type": "Hybrid", "yield_potential": "25-28 q/ha", "price": "₹750/packet"}
+                ]
             }
         }
         
-        recommendations = seed_recommendations.get(crop, {}).get(goals, [])
+        # Get recommendations for crop, defaulting to generic if not found
+        crop_recs = seed_recommendations.get(crop.lower())
+        if not crop_recs:
+             # Try to find a match if casing is different
+             for k in seed_recommendations:
+                 if k in crop.lower():
+                     crop_recs = seed_recommendations[k]
+                     break
         
+        recommendations = []
+        if crop_recs:
+            recommendations = crop_recs.get(goals, crop_recs.get("high_yield", []))
+        
+        # If still empty (unknown crop), provide generic advice
+        if not recommendations:
+            recommendations = [
+                {"variety": "Certified High-Yield Variety", "type": "Certified", "yield_potential": "High", "price": "Market Rate"},
+                {"variety": "Regional Hybrid", "type": "Hybrid", "yield_potential": "Medium-High", "price": "Market Rate"}
+            ]
+
         # Filter by budget
         if budget == "low":
             recommendations = [r for r in recommendations if r["price"] < "₹2500"]
         elif budget == "high":
             recommendations = [r for r in recommendations if r["price"] > "₹3000"]
         
-        response = f"Seed recommendations for {crop} in {location}: {', '.join([r['variety'] for r in recommendations[:3]])}"
+        # Ensure we have data for the response string
+        rec_str = ", ".join([r['variety'] for r in recommendations[:3]])
+        response = f"Seed recommendations for {crop} in {location}: {rec_str}"
         
         return {
             "agent": self.name,

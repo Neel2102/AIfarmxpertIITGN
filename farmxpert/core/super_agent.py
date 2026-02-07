@@ -216,6 +216,13 @@ class SuperAgent:
             "insurance", "risk", "claim"
         ])
 
+        wants_yield = has_any([
+            "yield", "production", "quantity", "quintal", "ton"
+        ])
+        wants_profit = has_any([
+            "profit", "loss", "margin", "income", "revenue", "cost", "expense", "budget"
+        ])
+
         selected: List[str] = []
         if wants_crop_planning:
             selected.append("crop_selector")
@@ -239,11 +246,20 @@ class SuperAgent:
             selected.append("task_scheduler")
         if wants_insurance:
             selected.append("crop_insurance_risk")
+        if wants_yield:
+            selected.append("yield_predictor")
+        if wants_profit:
+            selected.append("profit_optimization")
 
         selected = self._safe_list(selected)
         return selected or None
 
     async def _select_agents(self, query: str, context: Optional[Dict[str, Any]] = None) -> List[str]:
+        # Check intent first to handle general conversation in streaming/direct mode
+        intent = await self._classify_intent(query, context)
+        if intent == "GENERAL_CONVERSATION":
+            return ["__general_chat__"]
+
         strategy_selected = self._select_agents_by_strategy(context)
         if strategy_selected:
             return strategy_selected
@@ -438,22 +454,26 @@ class SuperAgent:
                 }
             )
             
-            # Handle simple greetings/small talk intelligently
-            greeting_response = create_simple_greeting_response(query)
-            if greeting_response:
+            # --- 0. INTELLIGENT ROUTING ---
+            # Quickly classify if this is a general chat or specific advisory
+            intent = await self._classify_intent(query, context)
+            self.logger.info(f"Query Intent Classified: {intent}")
+
+            if intent == "GENERAL_CONVERSATION":
+                # Handle directly without sub-agents
+                response_text = await self._handle_general_conversation(query, context)
                 execution_time = (datetime.now() - start_time).total_seconds()
                 return SuperAgentResponse(
                     query=query,
                     success=True,
-                    response={"answer": greeting_response},
-                    natural_language=greeting_response,
+                    response={"answer": response_text},
+                    natural_language=response_text,
                     agent_responses=[],
                     execution_time=execution_time,
                     session_id=session_id
                 )
-            
-            
-            # Step 1: Determine which agents to call (hybrid rules + Gemini fallback)
+
+            # --- 1. AGENT SELECTION (For specific/advisory queries) ---
             self.logger.debug("Starting agent selection")
             agent_selection = await self._select_agents(query, context)
             self.logger.info(
@@ -464,7 +484,7 @@ class SuperAgent:
                 }
             )
             
-            # Step 2: Execute selected agents
+            # --- 2. EXECUTE AGENTS ---
             self.logger.debug("Starting agent execution")
             agent_responses = await self._execute_agents(agent_selection, query, context)
             
@@ -481,7 +501,7 @@ class SuperAgent:
                 }
             )
             
-            # Step 3: Synthesize final response
+            # --- 3. SYNTHESIZE RESPONSE ---
             self.logger.debug("Starting response synthesis")
             final_response: Dict[str, Any] = await self._synthesize_response(query, agent_responses, context)
             
@@ -540,6 +560,53 @@ class SuperAgent:
                 session_id=session_id
             )
     
+    async def _classify_intent(self, query: str, context: Optional[Dict[str, Any]]) -> str:
+        """Classify if query is GENERAL_CONVERSATION or SPECIFIC_ADVISORY"""
+        # Simple heuristics for speed
+        q_lower = query.lower().strip()
+
+        # Handle follow-up questions (e.g., "why?", "how?", "when?") using conversation context.
+        # If there is recent chat history, treat these as advisory follow-ups instead of general chat.
+        if context and isinstance(context.get("chat_history"), list) and len(context.get("chat_history")) >= 2:
+            if q_lower in {"why", "why?", "why?\\", "how", "how?", "when", "when?", "explain", "explain?"}:
+                return "SPECIFIC_ADVISORY"
+        
+        # Greetings and simple questions (Regex for robustness)
+        # Matches "hi", "hii", "hello", "hey", "hola", "namaste", "good morning", etc.
+        greeting_pattern = r"^(hi+|hello|hey|hola|namaste|good\s*(morning|afternoon|evening)|greetings).{0,20}$"
+        if re.match(greeting_pattern, q_lower):
+            return "GENERAL_CONVERSATION"
+            
+        # Questions about identity
+        if "who are you" in q_lower or "what can you do" in q_lower or ("help" in q_lower and len(q_lower) < 20):
+            return "GENERAL_CONVERSATION"
+            
+        # Very short queries usually are conversational unless specific keywords
+        if len(q_lower.split()) <= 2:
+            # Check if it looks like a crop name or keyword
+            keywords = ["yield", "pest", "disease", "price", "market", "weather", "soil", "farm", "crop", "sowing", "seed", "irrigation", "fertilizer"]
+            if any(k in q_lower for k in keywords):
+                return "SPECIFIC_ADVISORY"
+            # If it's just a random short phrase not related to farming, treat as chat
+            return "GENERAL_CONVERSATION"
+
+        return "SPECIFIC_ADVISORY"
+
+    async def _handle_general_conversation(self, query: str, context: Optional[Dict[str, Any]]) -> str:
+        """Handle general conversation directly using Gemini"""
+        # Optimization: Instant response for simple greetings
+        if is_simple_query(query):
+            return create_simple_greeting_response(query)
+
+        prompt = f"""
+You are FarmXpert, a helpful agricultural AI assistant.
+User Query: "{query}"
+
+Answer the user directly and politely. Keep it brief. 
+If they ask what you can do, explain that you are an expert system orchestrating multiple specialized agents for Soil, Weather, Market, and Crop analysis.
+"""
+        return await gemini_service.generate_response(prompt, {"task": "general_chat"})
+    
     async def _select_agents_with_gemini(
         self, 
         query: str, 
@@ -551,17 +618,33 @@ class SuperAgent:
         # Create agent information for Gemini
         agents_info_text = self._format_agents_for_gemini()
         
+        # Format chat history if available
+        history_text = ""
+        if context and "chat_history" in context and isinstance(context["chat_history"], list):
+            history_items = []
+            for item in context["chat_history"]:
+                role = "Farmer" if item.get("role") == "user" else "Assistant"
+                content = item.get("content", "")
+                history_items.append(f"{role}: {content}")
+            if history_items:
+                history_text = "\nConversation History:\n" + "\n".join(history_items) + "\n"
+        
         prompt = f"""
 You are an AI coordinator for FarmXpert, an agricultural expert system. Your job is to analyze a farmer's query and determine which specialized agents should handle it.
 
 Available Agents:
 {agents_info_text}
 
+{history_text}
 Farmer's Query: "{query}"
 
 Context: {context or "No additional context provided"}
 
-Based on the query, select the most relevant agents (1-5 agents maximum) that should be called to provide a comprehensive answer. Consider:
+Based on the query and conversation history, select the most relevant agents (1-5 agents maximum).
+If the user asks a follow-up question (e.g., "what about for wheat?"), use the history to understand the full context.
+
+Consider:
+1. The main topic/domain of the query
 1. The main topic/domain of the query
 2. What information the farmer needs
 3. Which agents can provide the most relevant expertise
@@ -682,6 +765,17 @@ IMPORTANT: If a query is about a specific sub-domain like 'seeds', 'irrigation',
         try:
             self.logger.debug(f"Executing agent: {agent_name}")
             
+            # Handle special General Chat agent
+            if agent_name == "__general_chat__":
+                response_text = await self._handle_general_conversation(query, context)
+                execution_time = (datetime.now() - start_time).total_seconds()
+                return AgentResponse(
+                    agent_name="__general_chat__",
+                    success=True,
+                    data={"answer": response_text},
+                    execution_time=execution_time
+                )
+
             # Create agent instance from registry
             agent = self.agent_registry.create_agent(agent_name)
             
@@ -758,6 +852,27 @@ IMPORTANT: If a query is about a specific sub-domain like 'seeds', 'irrigation',
         
         return available_tools
     
+    def _format_agent_responses_for_synthesis(self, responses: List[AgentResponse]) -> str:
+        """Format agent responses for synthesis"""
+        formatted = []
+        for r in responses:
+            if not r.success:
+                continue
+                
+            # Extract main response text
+            response_text = ""
+            if isinstance(r.data, dict):
+                response_text = r.data.get("response", "")
+                # If response is empty but data exists, try to format data
+                if not response_text and r.data:
+                    response_text = json.dumps(r.data, ensure_ascii=False)
+            else:
+                response_text = str(r.data)
+                
+            formatted.append(f"--- Agent: {r.agent_name} ---\n{response_text}\n")
+            
+        return "\n".join(formatted)
+
     async def _synthesize_response(
         self, 
         query: str, 
@@ -767,124 +882,153 @@ IMPORTANT: If a query is about a specific sub-domain like 'seeds', 'irrigation',
         """
         Synthesize a comprehensive response from multiple agent responses
         """
-        # Low-LLM mode: deterministic SOP assembly to reduce quota usage and avoid long, random outputs.
+        # Optimization: Pass through General Chat response directly
+        if len(agent_responses) == 1 and agent_responses[0].agent_name == "__general_chat__" and agent_responses[0].success:
+            return agent_responses[0].data
+
+        # Optimization: If only one agent succeeded and we have structured data, skip synthesis LLM
+        # to reduce latency.
+        successful_agents = [r for r in agent_responses if r.success]
+        if len(successful_agents) == 1 and not getattr(settings, "force_synthesis", False):
+             return self._build_natural_response_from_agents(query, agent_responses)
+
+        # Low-LLM mode: deterministic SOP assembly to reduce quota usage
         if getattr(settings, "low_llm_mode", False):
-            return self._build_sop_from_agents(query, agent_responses)
+            return self._build_natural_response_from_agents(query, agent_responses)
 
         # Prepare agent responses for Gemini
         responses_text = self._format_agent_responses_for_synthesis(agent_responses)
-        
-        # SOP concise JSON schema
-        sop_schema = {
-            "answer": "string (one or two sentences, concise)",
-            "recommendations": ["up to 3 bullet points"],
-            "warnings": ["0-2 short items"],
-            "next_steps": ["1-3 concrete actions"],
-            "meta": {"agents_used": "list", "confidence": "0.0-1.0"}
-        }
 
         # Determine language for response
         locale = context.get('locale', 'en-IN') if context else 'en-IN'
         language_instruction = ""
         if locale and locale.lower() not in ('en', 'en-us', 'en-in', 'none'):
-             language_instruction = f"- IMPORTANT: Translate the 'answer', 'recommendations', 'warnings', and 'next_steps' into the language for locale '{locale}'."
+             language_instruction = f"\n\nIMPORTANT: Write the entire response in the language for locale '{locale}'."
 
         prompt = f"""
-You are FarmXpert SuperAgent, an expert agricultural advisor. Synthesize a comprehensive, natural language response.
+You are FarmXpert, a master agricultural consultant.
+User Query: "{query}"
 
-Original Query: "{query}"
-
-Agent Responses (data from specialized farming agents):
+We have gathered insights from specialized agents:
 {responses_text}
 
-Generate a detailed, conversational response like a ChatGPT would - informative, helpful, and natural.
+TASK:
+Synthesize these inputs into a single, cohesive, and expert-level natural language response.
 
-Output STRICTLY a single JSON object with this structure:
-{sop_schema}
+CRITICAL INSTRUCTIONS:
+1.  **Pure Conversational Style**: Write like a human expert talking to a farmer. Do NOT use Markdown tables, data grids, or complex structured formats.
+2.  **Preserve Details**: Use specific numbers, dates, prices, and names (e.g., "7.1 tons", "₹3500", "Start sowing on Nov 15") woven naturally into sentences or simple bullet points.
+3.  **Unified Voice**: Do not say "The Yield Agent said...". Speak as one expert system.
+4.  **No Fluff**: Get straight to the point.
+5.  **Completeness**: If an agent provided a specific warning or risk, include it.
 
-Rules:
-- The 'answer' field MUST be a detailed, paragraph-form response (3-5 sentences minimum) that:
-  * Directly addresses the user's query conversationally
-  * Synthesizes insights from all agent responses
-  * Provides specific, actionable information
-  * Sounds natural and helpful, like talking to an expert farmer advisor
-  * Do NOT use generic phrases like "Here's the recommended action plan based on your inputs"
-- 'recommendations' should be specific, actionable tips (not generic placeholders)
-- 'warnings' should be relevant alerts if any issues were detected
-- 'next_steps' should be concrete actions the farmer can take
-- Use meta.agents_used as the list of agent keys; meta.confidence as a number (0.0-1.0)
 {language_instruction}
+
+Response Format (JSON):
+{{
+"response": "The synthesized answer (pure markdown text, no tables)",
+"recommendations": ["list", "of", "key", "actions"],
+"warnings": ["critical", "warnings"],
+"insights": ["key", "insights"]
+}}
 """
-        
         try:
-            response = await gemini_service.generate_response(
-                prompt,
-                {"task": "response_synthesis", "format": "json", "concise": True}
-            )
-            parsed = gemini_service._parse_json_response(response)
-            if isinstance(parsed, dict) and parsed.get("answer"):
-                return parsed
-            return self._build_sop_from_agents(query, agent_responses)
+            response = await gemini_service.generate_response(prompt, {"task": "synthesis"})
+            
+            # Parse JSON
+            try:
+                if '```json' in response:
+                    start = response.find('```json') + 7
+                    end = response.find('```', start)
+                    json_str = response[start:end].strip()
+                    return json.loads(json_str)
+                elif '{' in response:
+                    start = response.find('{')
+                    end = response.rfind('}') + 1
+                    json_str = response[start:end]
+                    return json.loads(json_str)
+            except:
+                pass
+                
+            # Fallback
+            return {
+                "response": response,
+                "recommendations": [],
+                "warnings": [],
+                "insights": []
+            }
+            
         except Exception as e:
             self.logger.error(f"Error synthesizing response: {e}")
-            return self._build_sop_from_agents(query, agent_responses)
+            return self._build_natural_response_from_agents(query, agent_responses)
 
-    def _build_sop_from_agents(self, query: str, agent_responses: List[AgentResponse]) -> Dict[str, Any]:
+    def _build_natural_response_from_agents(self, query: str, agent_responses: List[AgentResponse]) -> Dict[str, Any]:
+        """Build natural language response from agent data when Gemini synthesis fails"""
         agents_used = [r.agent_name for r in agent_responses if r.success]
-
-        recommendations: List[str] = []
-        warnings: List[str] = []
-        next_steps: List[str] = []
-
-        def add_list(dst: List[str], items: Any, limit: int):
-            if len(dst) >= limit:
-                return
-            if isinstance(items, str) and items.strip():
-                dst.append(items.strip())
-                return
-            if isinstance(items, list):
-                for x in items:
-                    if len(dst) >= limit:
-                        break
-                    if isinstance(x, dict):
-                        dst.append(json.dumps(x, ensure_ascii=False))
-                    elif x is not None:
-                        s = str(x).strip()
-                        if s:
-                            dst.append(s)
-
+        
+        # Build sentences from agent data
+        sentences = []
+        
+        weather_data = None
+        crop_data = None
+        intro = ""
+        
+        # extract context first
+        for r in agent_responses:
+            if not r.success: continue
+            if "weather" in r.agent_name.lower() and isinstance(r.data, dict):
+                weather_data = r.data
+            if ("crop" in r.agent_name.lower() or "growth" in r.agent_name.lower()) and isinstance(r.data, dict):
+                crop_data = r.data
+        
+        # Create a contextual opening
+        if weather_data and isinstance(weather_data, dict):
+            temp = weather_data.get("temperature") or weather_data.get("current_temp")
+            condition = weather_data.get("condition") or weather_data.get("weather")
+            if temp and condition:
+                intro = f"With the current {condition} conditions and {temp}°C temperature,"
+        
+        if intro:
+            sentences.append(intro)
+        
         for r in agent_responses:
             if not (r.success and isinstance(r.data, dict)):
                 continue
-            add_list(recommendations, r.data.get("recommendations"), 3)
-            add_list(warnings, r.data.get("warnings"), 2)
-            add_list(next_steps, r.data.get("next_steps"), 3)
+            
+            # Extract main content
+            content = r.data.get("response") or r.data.get("answer") or r.data.get("message")
+            if content:
+                # specific clean up to ensure it flows
+                text = str(content).strip()
+                if not text.endswith('.'):
+                    text += '.'
+                sentences.append(text)
+                
+            # Extract specific recommendation if present
+            recs = r.data.get("recommendations", [])
+            if recs and isinstance(recs, list) and len(recs) > 0:
+                rec_text = str(recs[0]).strip()
+                # Clean up if it starts with "Recommended crop:" or similar redundant prefixes
+                lower_rec = rec_text.lower()
+                if "recommended crop:" in lower_rec:
+                    rec_text = rec_text.split(":", 1)[1].strip()
+                elif "recommendation:" in lower_rec:
+                    rec_text = rec_text.split(":", 1)[1].strip()
+                
+                if rec_text:
+                    sentences.append(f"I recommend {rec_text[0].lower() + rec_text[1:]}.")
 
-        if not next_steps:
-            next_steps = ["Share location + crop + growth stage for more precise advice."]
-
-        answer: str = ""
-        if agents_used:
-            for r in agent_responses:
-                if not (r.success and isinstance(r.data, dict)):
-                    continue
-                candidate = r.data.get("response")
-                if isinstance(candidate, str) and candidate.strip():
-                    answer = candidate.strip()
-                    break
-            if not answer:
-                answer = "Response ready."
-        else:
-            answer = "Please provide crop and location details for a precise recommendation."
-
-        if not recommendations:
-            recommendations = ["Provide crop name and current growth stage."]
-
+        if len(sentences) <= 1:
+            sentences.append("I don't have enough specific details to give you a complete answer. Please share your crop type and location so I can help you better.")
+            
+        full_text = " ".join(sentences)
+        
+        # Return structured as "answer" only, mimicking the LLM output
         return {
-            "answer": answer,
-            "recommendations": recommendations[:3],
-            "warnings": warnings[:2],
-            "next_steps": next_steps[:3],
+            "answer": full_text,
+            "recommendations": [],
+            "warnings": [],
+            "next_steps": [],
             "meta": {
                 "agents_used": agents_used,
                 "confidence": 0.6 if agents_used else 0.4,

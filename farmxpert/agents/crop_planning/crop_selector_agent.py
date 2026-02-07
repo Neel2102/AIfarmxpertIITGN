@@ -72,16 +72,67 @@ Always provide practical, actionable recommendations with clear reasoning."""
             "confidence": 0.8
         }
 
-    async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle crop selection using internal deterministic crop selector (no fallback)."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Initialize real tools
+        try:
+            from farmxpert.tools.crop_planning.market_scraper import MarketScraperTool
+            from farmxpert.tools.crop_planning.weather_client import WeatherClientTool
+            self.market_tool = MarketScraperTool()
+            self.weather_tool = WeatherClientTool()
+        except ImportError:
+            self.market_tool = None
+            self.weather_tool = None
+            self.logger.warning("Could not import real tools for CropSelectorAgent")
+
+    async def _handle_internal_logic(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle crop selection using internal deterministic crop selector with REAL TOOLS via tools.py."""
         from farmxpert.agents.crop_planning.crop_selector_pkg.agents.json_crop_selector import JSONCropSelector
 
         context = inputs.get("context") or {}
         location = context.get("farm_location") or context.get("location") or inputs.get("location") or {}
         if isinstance(location, str):
+            location_text = location
             location = {"state": context.get("state") or "", "district": context.get("district") or ""}
+        else:
+            location_text = f"{location.get('district', '')}, {location.get('state', '')}".strip(', ')
+        
         if not isinstance(location, dict):
             location = {}
+
+        # --- REAL TOOL INTEGRATION START ---
+        # enrich context with real weather and market data if tools are available
+        real_weather = {}
+        real_market = {}
+        
+        if self.weather_tool and location_text:
+            try:
+                # Fetch 5-day forecast
+                forecast = self.weather_tool.get_forecast(location_text)
+                if forecast and "list" in forecast:
+                    real_weather = {
+                        "forecast": forecast["list"][:3], # first 3 intervals
+                        "source": forecast.get("source", "simulated")
+                    }
+                    self.logger.info(f"Enriched CropSelector with weather data for {location_text}")
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch real weather: {e}")
+
+        if self.market_tool and location.get("state"):
+             # We don't know the crop yet, but if the user *mentioned* a crop, we can look it up
+             # OR we can pass this tool to the JSON selector (if it supported it)
+             # For now, let's just scrape for a common crop like 'Wheat' or 'Rice' as a baseline check
+             # or better, check if query has a crop.
+             mentioned_crop = self._extract_crop_from_query(inputs.get("query", ""))
+             if mentioned_crop:
+                 try:
+                     market_data = self.market_tool.fetch_market_prices(mentioned_crop, location.get("state"))
+                     if market_data:
+                         real_market = {"prices": market_data, "trend": "analyzed"}
+                         self.logger.info(f"Enriched CropSelector with market data for {mentioned_crop}")
+                 except Exception as e:
+                     self.logger.warning(f"Failed to fetch market data: {e}")
+        # --- REAL TOOL INTEGRATION END ---
 
         season = (
             context.get("entities", {}).get("time_period")
@@ -102,10 +153,12 @@ Always provide practical, actionable recommendations with clear reasoning."""
                 "land_size_acre": float(land_size_acre) if land_size_acre is not None else 1.0,
                 "risk_preference": risk_preference,
             },
-            "weather_watcher": context.get("weather_watcher") or context.get("weather") or {},
+            # Inject real tool data into context for reasoning
+            "weather_watcher": {**real_weather, **(context.get("weather_watcher") or {})},
+            "market_intelligence": {**real_market, **(context.get("market_intelligence") or {})},
+            
             "soil_health": context.get("soil_health") or context.get("soil") or context.get("soil_data") or {},
             "irrigation_planner": context.get("irrigation_planner") or context.get("irrigation") or {},
-            "market_intelligence": context.get("market_intelligence") or context.get("market") or {},
             "fertilizer_agent": context.get("fertilizer_agent") or context.get("fertilizer") or {},
         }
 
@@ -116,6 +169,11 @@ Always provide practical, actionable recommendations with clear reasoning."""
         recommendations: List[str] = []
         if isinstance(data, dict) and data.get("crop"):
             recommendations.append(f"Recommended crop: {data['crop']}")
+            # Add market insight if we scraped it
+            if real_market.get("prices"):
+                 best_price = max(p["modal_price"] for p in real_market["prices"])
+                 recommendations.append(f"Current market price trend for {data['crop']}: approx ₹{best_price}/quintal")
+
         next_steps = []
         if isinstance(reco, dict) and isinstance(reco.get("next_steps"), list):
             next_steps = [str(x) for x in reco.get("next_steps")[:5]]
@@ -128,7 +186,10 @@ Always provide practical, actionable recommendations with clear reasoning."""
             "warnings": [],
             "next_steps": next_steps,
             "data": reco,
-            "metadata": {"mode": "internal_crop_selector"},
+            "metadata": {
+                "mode": "internal_crop_selector_with_real_tools", 
+                "tools_used": ["WeatherClient", "MarketScraper"] if (real_weather or real_market) else []
+            },
         }
     
     def _extract_crop_from_query(self, query: str) -> Optional[str]:

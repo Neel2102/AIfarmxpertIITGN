@@ -75,64 +75,96 @@ CRITICAL: If the user asks about anything unrelated to Crop Selection, politely 
         }
 
     async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle crop selection using internal deterministic crop selector (no fallback)."""
-        # Kept the import path to original location as we are not moving the pkg yet
-        from farmxpert.agents.crop_planning.crop_selector_pkg.agents.json_crop_selector import JSONCropSelector
+        """Handle crop selection using internal deterministic crop selector with fallback."""
+        try:
+            # Kept the import path to original location as we are not moving the pkg yet
+            from farmxpert.agents.crop_planning.crop_selector_pkg.agents.json_crop_selector import JSONCropSelector
 
-        context = inputs.get("context") or {}
-        location = context.get("farm_location") or context.get("location") or inputs.get("location") or {}
-        if isinstance(location, str):
-            location = {"state": context.get("state") or "", "district": context.get("district") or ""}
-        if not isinstance(location, dict):
-            location = {}
+            context = inputs.get("context") or {}
+            location = context.get("farm_location") or context.get("location") or inputs.get("location") or {}
+            if isinstance(location, str):
+                location = {"state": context.get("state") or "", "district": context.get("district") or ""}
+            if not isinstance(location, dict):
+                location = {}
 
-        season = (
-            context.get("entities", {}).get("time_period")
-            or context.get("season")
-            or inputs.get("season")
-            or "Kharif"
-        )
-        land_size_acre = context.get("land_size_acre") or context.get("land") or inputs.get("land_size_acre") or 1.0
-        risk_preference = context.get("risk_preference") or inputs.get("risk_preference") or "Medium"
+            season = (
+                context.get("entities", {}).get("time_period")
+                or context.get("season")
+                or inputs.get("season")
+                or "Kharif"
+            )
+            land_size_acre = context.get("land_size_acre") or context.get("land") or inputs.get("land_size_acre") or 1.0
+            risk_preference = context.get("risk_preference") or inputs.get("risk_preference") or "Medium"
 
-        agent_inputs = {
-            "farmer_context": {
-                "location": {
-                    "state": location.get("state") or location.get("State") or "",
-                    "district": location.get("district") or location.get("District") or "",
+            agent_inputs = {
+                "farmer_context": {
+                    "location": {
+                        "state": location.get("state") or location.get("State") or "",
+                        "district": location.get("district") or location.get("District") or "",
+                    },
+                    "season": season,
+                    "land_size_acre": float(land_size_acre) if land_size_acre is not None else 1.0,
+                    "risk_preference": risk_preference,
                 },
-                "season": season,
-                "land_size_acre": float(land_size_acre) if land_size_acre is not None else 1.0,
-                "risk_preference": risk_preference,
-            },
-            "weather_watcher": context.get("weather_watcher") or context.get("weather") or {},
-            "soil_health": context.get("soil_health") or context.get("soil") or context.get("soil_data") or {},
-            "irrigation_planner": context.get("irrigation_planner") or context.get("irrigation") or {},
-            "market_intelligence": context.get("market_intelligence") or context.get("market") or {},
-            "fertilizer_agent": context.get("fertilizer_agent") or context.get("fertilizer") or {},
-        }
+                "weather_watcher": context.get("weather_watcher") or context.get("weather") or {},
+                "soil_health": context.get("soil_health") or context.get("soil") or context.get("soil_data") or {},
+                "irrigation_planner": context.get("irrigation_planner") or context.get("irrigation") or {},
+                "market_intelligence": context.get("market_intelligence") or context.get("market") or {},
+                "fertilizer_agent": context.get("fertilizer_agent") or context.get("fertilizer") or {},
+            }
 
-        selector = JSONCropSelector()
-        reco = selector.select_crop_from_json(agent_inputs)
-        data = reco.get("recommendation") if isinstance(reco, dict) else None
+            selector = JSONCropSelector()
+            reco = selector.select_crop_from_json(agent_inputs)
+            data = reco.get("recommendation") if isinstance(reco, dict) else None
 
-        recommendations: List[str] = []
-        if isinstance(data, dict) and data.get("crop"):
-            recommendations.append(f"Recommended crop: {data['crop']}")
-        next_steps = []
-        if isinstance(reco, dict) and isinstance(reco.get("next_steps"), list):
-            next_steps = [str(x) for x in reco.get("next_steps")[:5]]
+            recommendations: List[str] = []
+            if isinstance(data, dict) and data.get("crop"):
+                recommendations.append(f"Recommended crop: {data['crop']}")
+            next_steps = []
+            if isinstance(reco, dict) and isinstance(reco.get("next_steps"), list):
+                next_steps = [str(x) for x in reco.get("next_steps")[:5]]
 
-        return {
-            "agent": self.name,
-            "success": True,
-            "response": f"Recommended crop: {data.get('crop') if isinstance(data, dict) else ''}".strip(),
-            "recommendations": recommendations,
-            "warnings": [],
-            "next_steps": next_steps,
-            "data": reco,
-            "metadata": {"mode": "internal_crop_selector"},
-        }
+            crop_name = data.get("crop") if isinstance(data, dict) else None
+            detailed = reco.get("detailed_reasoning") if isinstance(reco, dict) else None
+            reasons: List[str] = []
+            if isinstance(detailed, dict):
+                for k in ("weather_impact", "soil_impact", "water_impact", "market_impact", "fertilizer_impact"):
+                    v = detailed.get(k)
+                    if isinstance(v, str) and v.strip():
+                        reasons.append(v.strip())
+
+            response_parts: List[str] = []
+            if crop_name:
+                response_parts.append(f"I recommend {crop_name} for this season.")
+            else:
+                response_parts.append("I can suggest crops for this season, but I need a bit more detail.")
+
+            if reasons:
+                response_parts.append("Reasons:")
+                for r in reasons[:3]:
+                    response_parts.append(f"- {r}")
+
+            if next_steps:
+                response_parts.append("Next steps:")
+                for s in next_steps[:3]:
+                    response_parts.append(f"- {s}")
+
+            response_text = "\n".join(response_parts).strip()
+
+            return {
+                "agent": self.name,
+                "success": True,
+                "response": response_text,
+                "recommendations": recommendations,
+                "warnings": [],
+                "next_steps": next_steps,
+                "data": reco,
+                "metadata": {"mode": "internal_crop_selector"},
+            }
+        except Exception as e:
+            self.logger.error(f"Internal CropSelector failed: {e}")
+            # Fallback to traditional logic
+            return await self._handle_traditional(inputs)
     
     def _extract_crop_from_query(self, query: str) -> Optional[str]:
         """Extract mentioned crop from user query"""

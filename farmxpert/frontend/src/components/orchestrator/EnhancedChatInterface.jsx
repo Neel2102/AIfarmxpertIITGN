@@ -4,16 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOrchestrator } from '../../contexts/OrchestratorContext';
 
 // Import orchestrator components
-import AgentActivationChips from './AgentActivationChips';
-import ReasoningTree from './ReasoningTree';
-import WorkflowVisualizer from './WorkflowVisualizer';
 import VoiceInterface from './VoiceInterface';
 
 const ChatContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: #f8fafc; /* Cleaner flat background */
   font-family: 'Inter', sans-serif;
 `;
 
@@ -21,16 +18,15 @@ const ChatHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
+  padding: 1.5rem 2rem;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #f1f5f9;
 `;
 
 const HeaderTitle = styled.h1`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -41,7 +37,7 @@ const HeaderStatus = styled.div`
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #64748b;
 `;
 
 const StatusDot = styled.div`
@@ -49,12 +45,6 @@ const StatusDot = styled.div`
   height: 8px;
   border-radius: 50%;
   background: ${props => props.isConnected ? '#10b981' : '#ef4444'};
-  animation: ${props => props.isConnected ? 'pulse 2s infinite' : 'none'};
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
 `;
 
 const ChatContent = styled.div`
@@ -62,22 +52,25 @@ const ChatContent = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-width: 900px; /* Limit width for better reading experience */
+  width: 100%;
+  margin: 0 auto;
 `;
 
 const MessagesContainer = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 2rem;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 `;
 
 const Message = styled(motion.div)`
   display: flex;
   gap: 1rem;
   align-items: flex-start;
-  max-width: 80%;
+  max-width: 85%;
   
   ${props => props.isUser ? `
     align-self: flex-end;
@@ -88,151 +81,156 @@ const Message = styled(motion.div)`
 `;
 
 const MessageAvatar = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px; /* Squircle */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   
   ${props => props.isUser ? `
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    background: #3b82f6;
     color: white;
   ` : `
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
   `}
 `;
 
 const MessageContent = styled.div`
-  background: white;
-  padding: 1rem 1.5rem;
-  border-radius: 18px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const MessageBubble = styled.div`
+  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  position: relative;
   
   ${props => props.isUser ? `
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    background: #3b82f6;
     color: white;
-    border-color: #3b82f6;
+    border-top-right-radius: 4px;
   ` : `
     background: white;
-    color: #1f2937;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    border-top-left-radius: 4px;
   `}
 `;
 
 const MessageText = styled.div`
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.6;
   white-space: pre-wrap;
 `;
 
-const MessageTime = styled.div`
-  font-size: 0.75rem;
-  color: ${props => props.isUser ? 'rgba(255, 255, 255, 0.7)' : '#9ca3af'};
+const ConsultedAgentsChip = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-top: 0.5rem;
-  text-align: ${props => props.isUser ? 'right' : 'left'};
+  padding-left: 0.5rem;
 `;
 
-const WorkflowSection = styled(motion.div)`
-  margin: 1rem 0;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.8);
+const SmallAgentChip = styled.span`
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: #f1f5f9;
+  color: #64748b;
   border-radius: 12px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #e2e8f0;
 `;
 
 const InputSection = styled.div`
-  padding: 1rem 2rem;
+  padding: 1.5rem 2rem;
   background: white;
-  border-top: 1px solid #e5e7eb;
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #f1f5f9;
 `;
 
 const InputContainer = styled.div`
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: flex-end;
-  max-width: 800px;
-  margin: 0 auto;
+  background: #f8fafc;
+  padding: 0.5rem;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+
+  &:focus-within {
+    border-color: #cbd5e1;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
 `;
 
 const TextInput = styled.textarea`
   flex: 1;
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 0.875rem;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
   font-family: inherit;
   resize: none;
-  min-height: 44px;
+  min-height: 24px;
   max-height: 120px;
-  transition: all 0.2s ease;
+  color: #334155;
   
   &:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
   
   &::placeholder {
-    color: #9ca3af;
+    color: #94a3b8;
   }
 `;
 
 const SendButton = styled(motion.button)`
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  padding: 0.75rem;
+  background: #0f172a;
   color: white;
   border: none;
   border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  }
+  justify-content: center;
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
   }
 `;
 
-const LoadingIndicator = styled(motion.div)`
+const LoadingDots = styled.div`
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-`;
-
-const TypingDots = styled.div`
-  display: flex;
-  gap: 0.25rem;
+  gap: 4px;
+  padding: 1rem;
+  color: #94a3b8;
   
   span {
     width: 6px;
     height: 6px;
+    background: currentColor;
     border-radius: 50%;
-    background: #9ca3af;
-    animation: typing 1.4s infinite ease-in-out;
-    
-    &:nth-child(1) { animation-delay: -0.32s; }
-    &:nth-child(2) { animation-delay: -0.16s; }
+    animation: bounce 1.4s infinite ease-in-out both;
   }
   
-  @keyframes typing {
+  span:nth-child(1) { animation-delay: -0.32s; }
+  span:nth-child(2) { animation-delay: -0.16s; }
+  
+  @keyframes bounce {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
   }
@@ -249,7 +247,7 @@ const EnhancedChatInterface = ({ className = '' }) => {
     submitVoiceInput,
     clearError
   } = useOrchestrator();
-  
+
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(true);
   const messagesEndRef = useRef(null);
@@ -261,7 +259,7 @@ const EnhancedChatInterface = ({ className = '' }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isProcessing]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -297,126 +295,73 @@ const EnhancedChatInterface = ({ className = '' }) => {
         }
         return;
       }
-
       await submitVoiceInput(voiceInput, session?.id);
     } catch (error) {
       console.error('Failed to process voice input:', error);
     }
   };
 
-  const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
-
-  const getActiveAgents = () => {
+  // Helper to get agents from the LATEST workflow if the message is the latest one
+  const getConsultedAgents = () => {
     if (!workflow || !workflow.tasks) return [];
-    
     return workflow.tasks
-      .filter(task => task.status === 'running' || task.status === 'completed')
-      .map(task => ({
-        id: task.id,
-        name: task.agent_name,
-        status: task.status
-      }));
+      .filter(t => t.status === 'completed')
+      .map(t => t.agent_name.replace(/_/g, ' ').replace('agent', '').trim());
   };
 
-  const getAgentOutputs = () => {
-    if (!workflow || !workflow.tasks) return [];
-    
-    return workflow.tasks
-      .filter(task => task.status === 'completed' && task.outputs)
-      .map(task => ({
-        id: task.id,
-        name: task.agent_name,
-        status: task.status,
-        outputs: task.outputs,
-        execution_time: task.execution_time
-      }));
-  };
-
-  const getCurrentResponse = () => {
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage && lastMessage.type === 'system' ? lastMessage.content : '';
-  };
+  const executedAgents = getConsultedAgents();
 
   return (
     <ChatContainer className={className}>
       <ChatHeader>
         <HeaderTitle>
-          🤖 FarmXpert AI Assistant
+          <span>🌾</span> FarmXpert AI
         </HeaderTitle>
-        
         <HeaderStatus>
           <StatusDot isConnected={isConnected} />
-          {isConnected ? 'Connected' : 'Disconnected'}
-          {session?.id && (
-            <span style={{ marginLeft: '1rem', fontSize: '0.75rem' }}>
-              Session: {session.id.slice(-8)}
-            </span>
-          )}
+          {isConnected ? 'Online' : 'Offline'}
         </HeaderStatus>
       </ChatHeader>
 
       <ChatContent>
-        {/* Error Display */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              style={{
-                background: '#fee2e2',
-                border: '1px solid #fecaca',
-                color: '#dc2626',
-                padding: '1rem',
-                margin: '1rem 2rem',
-                borderRadius: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <span>❌ {error}</span>
-              <button
-                onClick={clearError}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#dc2626',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem'
-                }}
-              >
-                ✕
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <MessagesContainer>
           <AnimatePresence>
             {messages.map((message, index) => (
               <Message
                 key={message.id || index}
                 isUser={message.type === 'user'}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
               >
                 <MessageAvatar isUser={message.type === 'user'}>
                   {message.type === 'user' ? '👤' : '🤖'}
                 </MessageAvatar>
-                
-                <MessageContent isUser={message.type === 'user'}>
-                  <MessageText>{message.content}</MessageText>
-                  <MessageTime isUser={message.type === 'user'}>
-                    {formatTime(message.timestamp)}
-                  </MessageTime>
+
+                <MessageContent>
+                  <MessageBubble isUser={message.type === 'user'}>
+                    <MessageText>{message.content}</MessageText>
+                  </MessageBubble>
+
+                  {/* Consulted Agents Chips - Per Message Source Attribution */}
+                  {!message.type === 'user' && (
+                    (message.agent_responses && message.agent_responses.length > 0) ||
+                    (index === messages.length - 1 && executedAgents.length > 0 && !isProcessing)
+                  ) && (
+                      <ConsultedAgentsChip>
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px' }}>INPUTS FROM:</span>
+                        {/* Priority: message.agent_responses (history), then executedAgents (current session fallback) */}
+                        {(message.agent_responses || []).map(r => (
+                          <SmallAgentChip key={r.agent_name}>
+                            ⚡ {r.agent_name.replace(/_/g, ' ').replace('agent', '').trim()}
+                          </SmallAgentChip>
+                        ))}
+                        {(!message.agent_responses && index === messages.length - 1) && executedAgents.map(agent => (
+                          <SmallAgentChip key={agent}>
+                            ⚡ {agent}
+                          </SmallAgentChip>
+                        ))}
+                      </ConsultedAgentsChip>
+                    )}
                 </MessageContent>
               </Message>
             ))}
@@ -425,15 +370,21 @@ const EnhancedChatInterface = ({ className = '' }) => {
           {isProcessing && (
             <Message isUser={false}>
               <MessageAvatar isUser={false}>🤖</MessageAvatar>
-              <MessageContent isUser={false}>
-                <LoadingIndicator>
-                  <span>Processing your request...</span>
-                  <TypingDots>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </TypingDots>
-                </LoadingIndicator>
+              <MessageContent>
+                <MessageBubble isUser={false}>
+                  <LoadingDots>
+                    <span></span><span></span><span></span>
+                  </LoadingDots>
+                </MessageBubble>
+                {/* Show Live Active Agents while processing */}
+                <ConsultedAgentsChip>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Thinking...</span>
+                  {workflow?.tasks?.filter(t => t.status === 'running').map(t => (
+                    <SmallAgentChip key={t.id} style={{ color: '#3b82f6', borderColor: '#bfdbfe', background: '#eff6ff' }}>
+                      🔄 {t.agent_name.replace(/_/g, ' ').replace('agent', '').trim()}
+                    </SmallAgentChip>
+                  ))}
+                </ConsultedAgentsChip>
               </MessageContent>
             </Message>
           )}
@@ -441,56 +392,6 @@ const EnhancedChatInterface = ({ className = '' }) => {
           <div ref={messagesEndRef} />
         </MessagesContainer>
 
-        {/* Agent Activation Chips */}
-        <AnimatePresence>
-          {workflow && workflow.tasks && (
-            <WorkflowSection
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <AgentActivationChips
-                agents={getActiveAgents()}
-                showStatus={true}
-              />
-            </WorkflowSection>
-          )}
-        </AnimatePresence>
-
-        {/* Workflow Visualizer */}
-        <AnimatePresence>
-          {workflow && (
-            <WorkflowSection
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <WorkflowVisualizer
-                workflow={workflow}
-                isActive={isProcessing}
-              />
-            </WorkflowSection>
-          )}
-        </AnimatePresence>
-
-        {/* Reasoning Tree */}
-        <AnimatePresence>
-          {workflow && !isProcessing && (
-            <WorkflowSection
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <ReasoningTree
-                data={getAgentOutputs()}
-                defaultExpanded={false}
-              />
-            </WorkflowSection>
-          )}
-        </AnimatePresence>
       </ChatContent>
 
       <InputSection>
@@ -500,38 +401,23 @@ const EnhancedChatInterface = ({ className = '' }) => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask me about crop planning, pest diagnosis, yield optimization, or any farming advice..."
+            placeholder="Ask anything..."
             disabled={isProcessing}
           />
-          
           <SendButton
             onClick={handleSendMessage}
             disabled={!inputText.trim() || isProcessing}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            {isProcessing ? (
-              <>
-                <span>⏳</span>
-                Processing...
-              </>
-            ) : (
-              <>
-                <span>📤</span>
-                Send
-              </>
-            )}
+            {isProcessing ? '...' : 'Send'}
           </SendButton>
-        </InputContainer>
 
-        {/* Voice Interface */}
-        <VoiceInterface
-          onVoiceInput={handleVoiceInput}
-          textToSpeak={getCurrentResponse()}
-          supportedLanguages={['en', 'hi']}
-          defaultLanguage="en"
-          autoRestartRecognition={true}
-        />
+          <VoiceInterface
+            onVoiceInput={handleVoiceInput}
+            textToSpeak={messages.length > 0 && messages[messages.length - 1].type !== 'user' ? messages[messages.length - 1].content : ''}
+          />
+        </InputContainer>
       </InputSection>
     </ChatContainer>
   );

@@ -8,36 +8,53 @@ class CommunityEngagementAgent(BaseAgent):
     name = "community_engagement_agent"
     description = "Facilitates peer networking, co-operative planning, shared purchases, or government interaction"
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        try:
+            from farmxpert.tools.support.community_forum import CommunityForumTool
+            self.forum_tool = CommunityForumTool()
+        except ImportError:
+            self.forum_tool = None
+            # self.logger.warning("Could not import CommunityForumTool")
+
     async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Provide community engagement recommendations"""
+        """Provide community engagement recommendations with LLM reasoning."""
         location = inputs.get("location", "unknown")
         farm_size = inputs.get("farm_size", 0)
         farmer_interests = inputs.get("farmer_interests", [])
         current_networks = inputs.get("current_networks", [])
+        query = inputs.get("query", "")
         
-        # Find local farmer groups
+        # Execute internal logic
         local_groups = self._find_local_groups(location)
-        
-        # Generate networking opportunities
         networking_opportunities = self._generate_networking_opportunities(
             location, farmer_interests, current_networks
         )
-        
-        # Suggest cooperative activities
         cooperative_activities = self._suggest_cooperative_activities(farm_size, location)
-        
-        # Provide government interaction guidance
         government_interaction = self._provide_government_interaction_guidance(location)
         
-        return {
-            "agent": self.name,
-            "location": location,
-            "local_groups": local_groups,
-            "networking_opportunities": networking_opportunities,
-            "cooperative_activities": cooperative_activities,
-            "government_interaction": government_interaction,
-            "recommendations": self._generate_recommendations(local_groups, networking_opportunities)
-        }
+        # Tool integration
+        forum_trends = []
+        similar_issues = []
+        
+        if self.forum_tool:
+            try:
+                # Get trending topics
+                forum_trends = self.forum_tool.get_trending_topics()
+                # If there's a specific query, search for similar issues
+                if query:
+                    similar_issues = self.forum_tool.search_similar_issues(query)
+            except Exception as e:
+                pass
+
+        # INJECT TOOL DATA INTO LLM CONTEXT
+        inputs["additional_data"] = inputs.get("additional_data", {})
+        inputs["additional_data"]["forum_trends"] = forum_trends
+        inputs["additional_data"]["similar_issues"] = similar_issues
+        inputs["additional_data"]["local_groups"] = local_groups
+        inputs["additional_data"]["government_schemes"] = government_interaction
+
+        return await self._handle_with_llm(inputs)
     
     def _find_local_groups(self, location: str) -> List[Dict[str, Any]]:
         """Find local farmer groups and organizations"""

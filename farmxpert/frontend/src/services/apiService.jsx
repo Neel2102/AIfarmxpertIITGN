@@ -40,18 +40,8 @@ export const farmAPI = {
   // Get farm details
   getFarm: async (farmId) => {
     try {
-      // Mock data for now - replace with real API call when backend is ready
-      return {
-        id: farmId,
-        name: "Krishna farm",
-        location: "Ahmedabad, Gujarat",
-        size_acres: 15,
-        owner: "Krishna Patel",
-        established: "2020",
-        soil_type: "Loamy",
-        irrigation_type: "Drip",
-        status: "active"
-      };
+      const response = await apiClient.get(`/farms/${farmId}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching farm data:', error);
       throw error;
@@ -61,15 +51,8 @@ export const farmAPI = {
   // Get farm summary
   getFarmSummary: async (farmId) => {
     try {
-      // Mock data for now - replace with real API call when backend is ready
-      return {
-        total_crops: 8,
-        active_tasks: 12,
-        completed_tasks: 45,
-        soil_health_score: 85,
-        weather_alert: false,
-        last_updated: new Date().toISOString()
-      };
+      const response = await apiClient.get(`/farms/${farmId}/summary`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching farm summary:', error);
       throw error;
@@ -164,48 +147,39 @@ export const agentAPI = {
 export const systemAPI = {
   // Get system status
   getSystemStatus: async () => {
-    // For now, always return offline mode to avoid API calls
-    // This can be changed when backend is available
-    return {
-      status: 'offline',
-      agents: {
-        active: 0,
-        total: 16,
-        processing: 0
-      },
-      system: {
-        uptime: '0h 0m',
-        last_update: new Date().toISOString(),
-        health: 'degraded'
-      },
-      message: 'Backend server is not running. Using offline mode.'
-    };
+    try {
+      const response = await apiClient.get('/system/status');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching system status:', error);
+      // Fallback for demo if system is down
+      return {
+        status: 'offline',
+        agents: { active: 0, total: 16 },
+        system: { uptime: '0h 0m', health: 'unknown' },
+        message: 'Backend unavailable'
+      };
+    }
   },
 
   // Get health check
   getHealthCheck: async () => {
-    // For now, always return offline mode to avoid API calls
-    return {
-      status: 'offline',
-      health: 'degraded',
-      timestamp: new Date().toISOString(),
-      message: 'Backend server is not running. Using offline mode.'
-    };
+    try {
+      const response = await apiClient.get('/system/health');
+      return response.data;
+    } catch (error) {
+      return { status: 'offline', health: 'unknown' };
+    }
   },
 
   // Get real-time status
   getRealtimeStatus: async () => {
-    // For now, always return offline mode to avoid API calls
-    return {
-      status: 'offline',
-      agents: [],
-      system: {
-        cpu: 0,
-        memory: 0,
-        disk: 0
-      },
-      message: 'Backend server is not running. Using offline mode.'
-    };
+    try {
+      const response = await apiClient.get('/system/realtime');
+      return response.data;
+    } catch (error) {
+      return { status: 'offline' };
+    }
   },
 };
 

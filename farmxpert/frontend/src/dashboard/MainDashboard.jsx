@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import TodayDashboard from './TodayDashboard';
 import FarmInformation from './FarmInformation';
 import Profile from './Profile';
 import Sidebar from './Sidebar';
@@ -34,6 +35,7 @@ const MainDashboard = () => {
       <Sidebar isOpen={true} onLogout={handleLogout} />
       <div className="main-dashboard-content">
         <Routes>
+          <Route path="/today" element={<TodayDashboard />} />
           <Route path="/farm-information" element={<FarmInformation />} />
           <Route path="/farm-map" element={<FarmMap />} />
           <Route path="/voice" element={<HandsFreeVoice />} />
@@ -41,8 +43,8 @@ const MainDashboard = () => {
           <Route path="/hardware-iot" element={<HardwareIoT />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/orchestrator/*" element={<Ai />} />
-          <Route path="/" element={<Navigate to="/dashboard/farm-information" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard/farm-information" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard/today" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard/today" replace />} />
         </Routes>
       </div>
     </div>

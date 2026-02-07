@@ -123,48 +123,51 @@ class YieldPredictorAgent(EnhancedBaseAgent):
     name = "yield_predictor_agent"
     description = "Estimates crop yields using farm-specific historical data, agronomic variables, and forecast conditions"
 
-    async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Predict yield using integrated CatBoost model artifacts (deterministic)."""
-
-        context = inputs.get("context", {})
-        query = inputs.get("query", "")
-
-        payload = context.get("yield_request") if isinstance(context.get("yield_request"), dict) else None
-        if payload is None and isinstance(inputs.get("yield_request"), dict):
-            payload = inputs.get("yield_request")
-
-        # Support passing fields directly in context for convenience
-        if payload is None:
-            payload = {
-                "State_Name": context.get("state") or context.get("State_Name"),
-                "District_Name": context.get("district") or context.get("District_Name"),
-                "Crop": context.get("crop") or context.get("Crop"),
-                "Season": context.get("season") or context.get("Season"),
-                "Crop_Year": context.get("crop_year") or context.get("Crop_Year"),
-                "Area": context.get("area") or context.get("Area"),
-            }
-
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         try:
-            result = predict_yield(payload)
-            y = result.get("predicted_yield")
-            response = f"Predicted yield: {round(float(y), 3) if y is not None else 'N/A'}"
-            return {
-                "agent": self.name,
-                "success": True,
-                "response": response,
-                "data": result,
-                "metadata": {"model": "catboost", "artifacts_dir": str(_external_artifacts_dir())},
-            }
-        except Exception as e:
-            self.logger.error(f"Yield prediction failed: {e}")
-            return {
-                "agent": self.name,
-                "success": False,
-                "response": "Yield prediction failed",
-                "error": str(e),
-                "data": {"query": query},
-                "metadata": {"model": "catboost"},
-            }
+            from farmxpert.tools.analytics.yield_engine import YieldEngineTool
+            self.yield_engine = YieldEngineTool()
+        except ImportError:
+            self.yield_engine = None
+            self.logger.warning("Could not import YieldEngineTool")
+
+    async def handle(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Predict yield using YieldEngineTool (simulated ML) and reason with LLM."""
+        context = inputs.get("context", {})
+        
+        # Extract parameters
+        crop = context.get("crop") or inputs.get("crop") or "Wheat"
+        area = context.get("area") or inputs.get("area") or 1.0
+        
+        # Prepare inputs for engine
+        engine_inputs = {
+            "soil_data": context.get("soil_data") or context.get("soil", {}),
+            "weather_data": context.get("weather_data") or context.get("weather", {})
+        }
+        
+        tool_data = {}
+        if self.yield_engine:
+            try:
+                # Use the new tool
+                result = self.yield_engine.predict_yield(str(crop), float(area), engine_inputs)
+                if result.get("success"):
+                    tool_data = result
+                    # Explicitly format for the LLM to see
+                    tool_data["summary"] = f"YieldEngine Prediction: {result.get('predicted_yield_tons')} tons of {crop} ({area} acres). Confidence: {result.get('confidence_score')}"
+                else:
+                    tool_data = {"error": "Yield prediction failed", "details": result.get("error")}
+            except Exception as e:
+                self.logger.error(f"YieldEngine failed: {e}")
+                tool_data = {"error": f"YieldEngine exception: {str(e)}"}
+        
+        # INJECT TOOL DATA INTO LLM CONTEXT
+        # This is the critical step for "Context-Awareness"
+        inputs["additional_data"] = inputs.get("additional_data", {})
+        inputs["additional_data"]["yield_prediction_tool_result"] = tool_data
+        
+        # Force LLM usage to generate the final response using the Persona
+        return await self._handle_with_llm(inputs)
     
     def _predict_crop_yield(self, crop: str, soil_data: Dict, weather: Dict, 
                            historical: List[float], field_conditions: Dict, 

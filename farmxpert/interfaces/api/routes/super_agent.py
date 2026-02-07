@@ -15,6 +15,10 @@ from farmxpert.core.super_agent import super_agent, SuperAgentResponse
 from farmxpert.core.utils.logger import get_logger
 from farmxpert.services.gemini_service import gemini_service
 
+# Simple in-memory chat history store for demo (session_id -> list of turns)
+# Turn format: {"role": "user"|"assistant", "content": "text"}
+CHAT_HISTORY_STORE: Dict[str, List[Dict[str, str]]] = {}
+
 
 def _safe_scalar(value: Any) -> bool:
     return value is None or isinstance(value, (str, int, float, bool))
@@ -375,6 +379,12 @@ async def process_user_query_ui_stream(request: QueryRequest):
             try:
                 yield f"data: {json.dumps({'type': 'start', 'session_id': session_id, 'timestamp': start_ts})}\n\n"
 
+                # Inject chat history into context for agents and synthesis
+                chat_history = CHAT_HISTORY_STORE.get(session_id, [])
+                context["chat_history"] = chat_history[-10:] # Keep last 10 turns (20 messages)
+                
+                logger.info(f"Using chat history (last {len(context['chat_history'])} turns) for session {session_id}")
+
                 agent_selection = await super_agent._select_agents(request.query, context)
                 ordered_agents = [a for a in agent_selection if isinstance(a, str)]
                 if not ordered_agents:
@@ -406,9 +416,20 @@ async def process_user_query_ui_stream(request: QueryRequest):
 
                 final_response: Dict[str, Any] = await super_agent._synthesize_response(request.query, agent_responses, context)
                 sop_json: Dict[str, Any] = final_response if isinstance(final_response, dict) else {}
-                answer_text: str = sop_json.get("answer") if isinstance(sop_json, dict) else None
+                answer_text: str = sop_json.get("answer") or sop_json.get("response") if isinstance(sop_json, dict) else None
                 if not answer_text:
                     answer_text = "Response ready."
+                
+                # Save to history
+                if session_id not in CHAT_HISTORY_STORE:
+                    CHAT_HISTORY_STORE[session_id] = []
+                
+                CHAT_HISTORY_STORE[session_id].append({"role": "user", "content": request.query})
+                CHAT_HISTORY_STORE[session_id].append({"role": "assistant", "content": answer_text})
+                
+                # Limit history size in memory
+                if len(CHAT_HISTORY_STORE[session_id]) > 20:
+                    CHAT_HISTORY_STORE[session_id] = CHAT_HISTORY_STORE[session_id][-20:]
 
                 ui_final = _build_streaming_ui(answer_text, ordered_agents, agent_states)
                 
@@ -468,6 +489,10 @@ async def process_user_query(request: QueryRequest):
             context["user_id"] = request.user_id
         context["session_id"] = session_id
         
+        # Inject chat history into context
+        chat_history = CHAT_HISTORY_STORE.get(session_id, [])
+        context["chat_history"] = chat_history[-10:]
+        
         # Process query through SuperAgent
         result: SuperAgentResponse = await super_agent.process_query(
             query=request.query,
@@ -520,6 +545,16 @@ async def process_user_query(request: QueryRequest):
 
         # Use natural language response from SuperAgent
         natural_language_response = result.natural_language or answer_text
+
+        # Save to history
+        if session_id not in CHAT_HISTORY_STORE:
+            CHAT_HISTORY_STORE[session_id] = []
+        
+        CHAT_HISTORY_STORE[session_id].append({"role": "user", "content": request.query})
+        CHAT_HISTORY_STORE[session_id].append({"role": "assistant", "content": natural_language_response})
+        
+        if len(CHAT_HISTORY_STORE[session_id]) > 20:
+            CHAT_HISTORY_STORE[session_id] = CHAT_HISTORY_STORE[session_id][-20:]
 
         return QueryResponse(
             success=result.success,

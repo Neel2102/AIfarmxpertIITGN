@@ -26,124 +26,7 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
     }
   };
 
-  const SmartChatUI = ({ ui }) => {
-    if (!ui || ui.type !== 'smart_chat_ui_v1') return null;
-    const sections = Array.isArray(ui.sections) ? ui.sections : [];
-
-    return (
-      <div className="smart-ui-root">
-        {(ui.header?.title || ui.header?.subtitle) && (
-          <div className="smart-ui-header">
-            {ui.header?.title && <div className="smart-ui-title">{ui.header.title}</div>}
-            {ui.header?.subtitle && <div className="smart-ui-subtitle">{ui.header.subtitle}</div>}
-          </div>
-        )}
-
-        {sections.map((section, sectionIndex) => {
-          if (section?.type !== 'agent_results') return null;
-          const items = Array.isArray(section.items) ? section.items : [];
-          const isCollapsible = Boolean(section.collapsible);
-          const defaultCollapsed = Boolean(section.defaultCollapsed);
-
-          const content = (
-            <div className="agent-results">
-              {items.map((item, itemIndex) => {
-                const agentName = item?.agent?.name || item?.agent?.id || `Agent ${itemIndex + 1}`;
-                const status = item?.agent?.status || 'success';
-                const statusBadge = item?.agent?.statusBadge || (status === 'success' ? 'Success' : status === 'error' ? 'Failed' : status);
-                const widgets = Array.isArray(item.widgets) ? item.widgets : [];
-
-                return (
-                  <details key={`${sectionIndex}-${itemIndex}`} className={`agent-card status-${status}`} open>
-                    <summary className="agent-card-summary">
-                      <div className="agent-card-left">
-                        <span className={`agent-status-dot ${status}`}></span>
-                        <span className="agent-card-name">{agentName}</span>
-                        {item?.summary && <span className="agent-card-mini">{item.summary}</span>}
-                      </div>
-                      <div className={`agent-card-badge ${status}`}>{statusBadge}</div>
-                    </summary>
-
-                    <div className="agent-card-body">
-                      {widgets.map((w, wIndex) => {
-                        if (w?.type === 'metric_grid') {
-                          const metricItems = Array.isArray(w.items) ? w.items : [];
-                          return (
-                            <div key={wIndex} className="metric-grid">
-                              {metricItems.map((m, mIndex) => (
-                                <div key={mIndex} className={`metric-tile ${m?.emphasis ? 'emphasis' : ''}`}>
-                                  <div className="metric-label">{m?.label}</div>
-                                  <div className="metric-value">
-                                    <span className="metric-number">{formatScalar(m?.value)}</span>
-                                    {m?.unit ? <span className="metric-unit">{m.unit}</span> : null}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        }
-
-                        if (w?.type === 'table_grouped') {
-                          const groups = Array.isArray(w.groups) ? w.groups : [];
-                          return (
-                            <div key={wIndex} className="grouped-table">
-                              {w?.title && <div className="grouped-table-title">{w.title}</div>}
-                              <div className="grouped-table-body">
-                                {groups.map((g, gIndex) => {
-                                  const rows = Array.isArray(g.rows) ? g.rows : [];
-                                  if (rows.length === 0) return null;
-                                  return (
-                                    <div key={gIndex} className="group-block">
-                                      <div className="group-title">{g?.groupTitle}</div>
-                                      <table className="kv-table">
-                                        <tbody>
-                                          {rows.map((r, rIndex) => (
-                                            <tr key={rIndex}>
-                                              <td className="kv-key">{r?.field}</td>
-                                              <td className="kv-value">{formatScalar(r?.value)}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        if (w?.type === 'alert') {
-                          const variant = w?.variant || 'info';
-                          return (
-                            <div key={wIndex} className={`smart-alert ${variant}`}>
-                              {w?.title && <div className="smart-alert-title">{w.title}</div>}
-                              {w?.message && <div className="smart-alert-message">{w.message}</div>}
-                            </div>
-                          );
-                        }
-
-                        return null;
-                      })}
-                    </div>
-                  </details>
-                );
-              })}
-            </div>
-          );
-
-          if (!isCollapsible) return <div key={sectionIndex}>{content}</div>;
-
-          return (
-            <details key={sectionIndex} className="agent-results-shell" open={!defaultCollapsed}>
-              <summary className="agent-results-shell-summary">Agent Results</summary>
-              {content}
-            </details>
-          );
-        })}
-      </div>
-    );
-  };
+  // SmartChatUI component removed per user request for simple chatbot interface
 
   // Debug logging removed
 
@@ -445,39 +328,10 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
           }
         }
       } else {
-        // Individual agent chat - use their specific endpoints
-        // Support both underscore and hyphen agent IDs
-        const agentEndpointMap = {
-          // Hyphen versions
-          'crop-selector': '/api/agents/crop-selector/analyze',
-          'seed-selection': '/api/agents/seed-selector/select',
-          'irrigation-planner': '/api/agents/irrigation-planner/plan',
-          'pest-diagnostic': '/api/agents/pest-disease/diagnose',
-          'farmer-coach': '/api/agents/farmer-coach/ask',
-          'compliance-certification': '/api/agents/compliance/certify',
-          'soil-health': '/api/agents/soil-health/analyze',
-          'fertilizer-advisor': '/api/agents/fertilizer/analyze',
-          'weather-watcher': '/api/agents/weather-watcher/analyze',
-          'growth-monitor': '/api/agents/growth-stage-monitor/analyze',
-          'yield-predictor': '/api/agents/yield/predict',
-          'profit-optimizer': '/api/agents/profit/optimize',
-          // Underscore versions (legacy)
-          'crop_selector': '/api/agents/crop-selector/analyze',
-          'seed_selection': '/api/agents/seed-selector/select',
-          'irrigation_planner': '/api/agents/irrigation-planner/plan',
-          'pest_diagnostic': '/api/agents/pest-disease/diagnose',
-          'pest_disease_diagnostic': '/api/agents/pest-disease/diagnose',
-          'farmer_coach': '/api/agents/farmer-coach/ask',
-          'compliance_certification': '/api/agents/compliance/certify',
-          'soil_health': '/api/agents/soil-health/analyze',
-          'fertilizer_advisor': '/api/agents/fertilizer/analyze',
-          'weather_watcher': '/api/agents/weather-watcher/analyze',
-          'growth_monitor': '/api/agents/growth-stage-monitor/analyze',
-          'yield_predictor': '/api/agents/yield/predict',
-          'profit_optimizer': '/api/agents/profit/optimize',
-        };
-
-        const url = agentEndpointMap[agent] || `${API_BASE_URL}/api/agents/${agent.replace(/_/g, '-')}/analyze`;
+        // Individual agent chat - use unified agent endpoint for consistent natural language output
+        // Backend route: POST /api/agents/{agent_name}
+        const agentName = String(agent || '').replace(/-/g, '_');
+        const url = `${API_BASE_URL}/api/agents/${agentName}`;
 
         const response = await fetch(url, {
           method: 'POST',
@@ -500,16 +354,17 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
         }
 
         const data = await response.json();
-        // Extract natural language response - agents return different formats
+        // Unified endpoint guarantees a top-level `response` when possible.
+        // Still keep fallbacks for safety.
         let content = '';
         if (data?.response && typeof data.response === 'string') {
           content = data.response;
+        } else if (data?.natural_language && typeof data.natural_language === 'string') {
+          content = data.natural_language;
         } else if (data?.answer && typeof data.answer === 'string') {
           content = data.answer;
         } else if (data?.message && typeof data.message === 'string') {
           content = data.message;
-        } else if (data?.natural_language) {
-          content = data.natural_language;
         } else {
           content = JSON.stringify(data, null, 2);
         }
@@ -575,46 +430,27 @@ const ChatPanel = ({ agent, farmData, sessionId }) => {
                       <span></span>
                     </div>
                   )}
-                  {/* Show Reasoning Toggle - includes UI tables and agent data */}
-                  {(m.ui || m.sop || m.agent_responses) && !m.isStreaming && (
-                    <div className="reasoning-section">
-                      <button
-                        className="show-reasoning-btn"
-                        onClick={() => {
-                          setShowReasoningFor(prev => {
-                            const newSet = new Set(prev);
-                            if (newSet.has(m.id)) {
-                              newSet.delete(m.id);
-                            } else {
-                              newSet.add(m.id);
-                            }
-                            return newSet;
-                          });
-                        }}
-                      >
-                        {showReasoningFor.has(m.id) ? '🔽 Hide Reasoning' : '🔍 Show Reasoning'}
-                      </button>
-                      {showReasoningFor.has(m.id) && (
-                        <div className="reasoning-content">
-                          <h4>Agent Reasoning & Data</h4>
-                          {/* Show UI tables */}
-                          {m.ui && <SmartChatUI ui={m.ui} />}
-                          {/* Show agent responses */}
-                          {m.agent_responses && m.agent_responses.length > 0 && (
-                            <div style={{ marginTop: '16px' }}>
-                              <h5 style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px' }}>Agent Responses:</h5>
-                              <pre>{JSON.stringify(m.agent_responses, null, 2)}</pre>
-                            </div>
-                          )}
-                          {/* Show SOP data */}
-                          {m.sop && (
-                            <div style={{ marginTop: '16px' }}>
-                              <h5 style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px' }}>SOP Data:</h5>
-                              <pre>{JSON.stringify(m.sop, null, 2)}</pre>
-                            </div>
-                          )}
-                        </div>
-                      )}
+
+                  {/* Consulted Agents Chips - Simple & Clean */}
+                  {m.agent_responses && m.agent_responses.length > 0 && !m.isStreaming && (
+                    <div className="consulted-agents-row" style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', color: '#9ca3af', alignSelf: 'center', fontWeight: 500 }}>INPUTS FROM:</span>
+                      {m.agent_responses.filter(a => a.success).map((agent, i) => (
+                        <span key={i} style={{
+                          fontSize: '11px',
+                          background: '#f8fafc',
+                          color: '#64748b',
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontWeight: 500
+                        }}>
+                          ⚡ {getAgentDisplayName(agent.agent_name)}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
